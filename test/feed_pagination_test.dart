@@ -5,8 +5,14 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:video_player_mvp/app/app.dart';
 
 void main() {
+  Finder findVerticalFeedPageView() {
+    return find.byWidgetPredicate(
+      (widget) => widget is PageView && widget.scrollDirection == Axis.vertical,
+    );
+  }
+
   Future<void> flingToNextPage(WidgetTester tester) async {
-    await tester.fling(find.byType(PageView), const Offset(0, -500), 1000);
+    await tester.fling(findVerticalFeedPageView(), const Offset(0, -500), 1000);
     await tester.pump(const Duration(milliseconds: 700));
   }
 

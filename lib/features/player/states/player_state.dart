@@ -1,11 +1,8 @@
-import 'package:video_player/video_player.dart';
-
 import '../../../data/models/video_source.dart';
 
 class PlayerState {
   const PlayerState({
     required this.videoId,
-    required this.controller,
     required this.selectedQuality,
     required this.isInitializing,
     required this.isInitialized,
@@ -18,7 +15,6 @@ class PlayerState {
 
   const PlayerState.initial()
     : videoId = null,
-      controller = null,
       selectedQuality = VideoQuality.p720,
       isInitializing = false,
       isInitialized = false,
@@ -29,7 +25,6 @@ class PlayerState {
       error = null;
 
   final String? videoId;
-  final VideoPlayerController? controller;
   final VideoQuality selectedQuality;
   final bool isInitializing;
   final bool isInitialized;
@@ -41,7 +36,6 @@ class PlayerState {
 
   PlayerState copyWith({
     String? videoId,
-    VideoPlayerController? controller,
     VideoQuality? selectedQuality,
     bool? isInitializing,
     bool? isInitialized,
@@ -50,12 +44,10 @@ class PlayerState {
     Duration? currentPosition,
     Duration? duration,
     String? error,
-    bool clearController = false,
     bool clearError = false,
   }) {
     return PlayerState(
       videoId: videoId ?? this.videoId,
-      controller: clearController ? null : controller ?? this.controller,
       selectedQuality: selectedQuality ?? this.selectedQuality,
       isInitializing: isInitializing ?? this.isInitializing,
       isInitialized: isInitialized ?? this.isInitialized,

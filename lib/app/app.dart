@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/gestures.dart';
 
 import '../core/constants/route_constants.dart';
 import 'app_router.dart';
@@ -15,9 +16,20 @@ class App extends StatelessWidget {
       theme: AppTheme.light,
       darkTheme: AppTheme.dark,
       themeMode: ThemeMode.system,
+      scrollBehavior: const _AppScrollBehavior(),
       initialRoute: RouteConstants.feed,
       routes: AppRouter.routes,
       onUnknownRoute: AppRouter.onUnknownRoute,
     );
   }
+}
+
+class _AppScrollBehavior extends MaterialScrollBehavior {
+  const _AppScrollBehavior();
+
+  @override
+  Set<PointerDeviceKind> get dragDevices => {
+    ...super.dragDevices,
+    PointerDeviceKind.mouse,
+  };
 }

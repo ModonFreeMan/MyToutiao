@@ -1,13 +1,10 @@
-import 'dart:async';
-
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/constants/route_constants.dart';
 import '../../../data/models/video_feed_item.dart';
 import '../../../data/repositories/search_repository.dart';
-import '../../feed/view_models/feed_view_model.dart';
-import '../../player/controllers/player_controller.dart';
+import '../../feed/coordinators/feed_playback_coordinator.dart';
 import '../view_models/search_view_model.dart';
 import '../widgets/search_input_bar.dart';
 import '../widgets/search_video_result_item.dart';
@@ -77,12 +74,9 @@ class _SearchResultPageState extends ConsumerState<SearchResultPage> {
   }
 
   Future<void> _openFeedVideo(VideoFeedItem item) async {
-    final didFocus = await ref
-        .read(feedViewModelProvider.notifier)
-        .focusItemById(item.id);
-    if (didFocus) {
-      unawaited(ref.read(playerControllerProvider.notifier).playVideo(item));
-    }
+    await ref
+        .read(feedPlaybackCoordinatorProvider)
+        .handleSearchResultSelected(item);
 
     if (!mounted) {
       return;

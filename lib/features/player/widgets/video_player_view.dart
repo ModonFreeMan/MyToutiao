@@ -13,8 +13,9 @@ class VideoPlayerView extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final playerState = ref.watch(playerControllerProvider);
+    final playerController = ref.read(playerControllerProvider.notifier);
     final controller = playerState.videoId == item.id
-        ? playerState.controller
+        ? playerController.videoController
         : null;
 
     if (controller == null || !playerState.isInitialized) {

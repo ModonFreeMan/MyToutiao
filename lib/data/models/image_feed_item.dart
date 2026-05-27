@@ -9,10 +9,12 @@ class ImageFeedItem extends FeedItem {
     required super.tags,
     required super.recommendationWords,
     required super.createdAt,
-    required this.imageUrl,
+    required this.imageUrls,
     required this.description,
   }) : super(type: FeedItemType.image);
 
-  final String imageUrl;
+  final List<String> imageUrls;
   final String description;
+
+  String get imageUrl => imageUrls.first;
 }

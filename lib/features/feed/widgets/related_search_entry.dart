@@ -3,9 +3,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/constants/route_constants.dart';
 import '../../../data/models/feed_item.dart';
-import '../../player/controllers/player_controller.dart';
 import '../../recommendation/providers/recommendation_provider.dart';
 import '../../search/view_models/search_view_model.dart';
+import '../coordinators/feed_playback_coordinator.dart';
 
 class RelatedSearchEntry extends ConsumerWidget {
   const RelatedSearchEntry({required this.item, super.key});
@@ -25,11 +25,10 @@ class RelatedSearchEntry extends ConsumerWidget {
         return _RelatedSearchView(
           words: words,
           onWordTap: (word) async {
-            final wasPlaying = ref.read(playerControllerProvider).isPlaying;
-            final playerController = ref.read(
-              playerControllerProvider.notifier,
+            final playbackCoordinator = ref.read(
+              feedPlaybackCoordinatorProvider,
             );
-            await playerController.pause();
+            await playbackCoordinator.pauseForFeedCovered();
             await ref.read(searchViewModelProvider.notifier).submitSearch(word);
 
             if (!context.mounted) {
@@ -44,9 +43,7 @@ class RelatedSearchEntry extends ConsumerWidget {
               return;
             }
 
-            if (wasPlaying) {
-              await playerController.resume();
-            }
+            await playbackCoordinator.resumeAfterFeedUncovered();
           },
         );
       },

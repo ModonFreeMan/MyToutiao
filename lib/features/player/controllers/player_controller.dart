@@ -15,6 +15,8 @@ class PlayerController extends Notifier<PlayerState> {
   String? _controllerVideoId;
   int _initToken = 0;
 
+  VideoPlayerController? get videoController => _controller;
+
   @override
   PlayerState build() {
     ref.onDispose(_disposeCurrent);
@@ -41,7 +43,6 @@ class PlayerController extends Notifier<PlayerState> {
     const selectedQuality = VideoQuality.p720;
     state = PlayerState(
       videoId: item.id,
-      controller: null,
       selectedQuality: selectedQuality,
       isInitializing: true,
       isInitialized: false,
@@ -72,7 +73,6 @@ class PlayerController extends Notifier<PlayerState> {
       _controllerVideoId = item.id;
 
       state = state.copyWith(
-        controller: nextController,
         isInitializing: false,
         isInitialized: true,
         duration: nextController.value.duration,
@@ -92,7 +92,6 @@ class PlayerController extends Notifier<PlayerState> {
         isInitialized: false,
         isPlaying: false,
         error: error.toString(),
-        clearController: true,
       );
     }
   }
@@ -119,7 +118,6 @@ class PlayerController extends Notifier<PlayerState> {
       isBuffering: false,
       currentPosition: previousPosition,
       duration: item.duration,
-      clearController: true,
       clearError: true,
     );
 
@@ -149,7 +147,6 @@ class PlayerController extends Notifier<PlayerState> {
       }
 
       state = state.copyWith(
-        controller: nextController,
         selectedQuality: quality,
         isInitializing: false,
         isInitialized: true,
@@ -173,7 +170,6 @@ class PlayerController extends Notifier<PlayerState> {
         isInitialized: false,
         isPlaying: false,
         error: error.toString(),
-        clearController: true,
       );
     }
   }
@@ -258,7 +254,6 @@ class PlayerController extends Notifier<PlayerState> {
     final value = controller.value;
     state = state.copyWith(
       videoId: _controllerVideoId,
-      controller: controller,
       selectedQuality: state.selectedQuality,
       isInitializing: false,
       isInitialized: value.isInitialized,

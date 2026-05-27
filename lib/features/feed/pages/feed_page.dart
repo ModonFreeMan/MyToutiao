@@ -5,7 +5,8 @@ import '../../../core/constants/route_constants.dart';
 import '../../../data/models/feed_item.dart';
 import '../../../data/models/image_feed_item.dart';
 import '../../../data/models/video_feed_item.dart';
-import '../../player/controllers/player_controller.dart';
+import '../coordinators/feed_playback_coordinator.dart';
+import '../states/feed_state.dart';
 import '../view_models/feed_view_model.dart';
 import '../widgets/image_feed_card.dart';
 import '../widgets/video_feed_card.dart';
@@ -38,26 +39,17 @@ class _FeedPageState extends ConsumerState<FeedPage> {
     final feedViewModel = ref.read(feedViewModelProvider.notifier);
 
     ref.listen(feedViewModelProvider, (previous, next) {
-      final previousItem = _currentItem(
-        previous?.items,
-        previous?.currentIndex,
-      );
-      final nextItem = _currentItem(next.items, next.currentIndex);
-
-      if (previousItem?.id == nextItem?.id) {
-        return;
-      }
-
       if (previous?.currentIndex != next.currentIndex) {
         _syncPageControllerToIndex(next.currentIndex);
       }
 
-      final playerController = ref.read(playerControllerProvider.notifier);
-      if (nextItem case final VideoFeedItem videoItem) {
-        playerController.playVideo(videoItem);
-      } else {
-        playerController.stop();
+      if (_isSameCurrentItem(previous, next)) {
+        return;
       }
+
+      ref
+          .read(feedPlaybackCoordinatorProvider)
+          .handleFeedCurrentChanged(next.currentIndex);
     });
 
     return Scaffold(
@@ -165,11 +157,10 @@ class _FeedSearchEntry extends ConsumerWidget {
             child: InkWell(
               borderRadius: BorderRadius.circular(22),
               onTap: () async {
-                final wasPlaying = ref.read(playerControllerProvider).isPlaying;
-                final playerController = ref.read(
-                  playerControllerProvider.notifier,
+                final playbackCoordinator = ref.read(
+                  feedPlaybackCoordinatorProvider,
                 );
-                await playerController.pause();
+                await playbackCoordinator.pauseForFeedCovered();
 
                 if (!context.mounted) {
                   return;
@@ -181,9 +172,7 @@ class _FeedSearchEntry extends ConsumerWidget {
                   return;
                 }
 
-                if (wasPlaying) {
-                  await playerController.resume();
-                }
+                await playbackCoordinator.resumeAfterFeedUncovered();
               },
               child: Container(
                 height: 44,
@@ -209,6 +198,12 @@ class _FeedSearchEntry extends ConsumerWidget {
       ),
     );
   }
+}
+
+bool _isSameCurrentItem(FeedState? previous, FeedState next) {
+  final previousItem = _currentItem(previous?.items, previous?.currentIndex);
+  final nextItem = _currentItem(next.items, next.currentIndex);
+  return previousItem?.id == nextItem?.id;
 }
 
 FeedItem? _currentItem(List<FeedItem>? items, int? index) {
