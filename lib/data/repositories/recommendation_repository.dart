@@ -26,6 +26,10 @@ class RecommendationRepository {
     return dataSource.fetchWordsByTags(tags);
   }
 
+  Future<List<String>> fetchWordsByText(String text) {
+    return dataSource.fetchWordsByText(text);
+  }
+
   Future<List<String>> fetchDefaultWords() {
     return dataSource.fetchDefaultWords();
   }
