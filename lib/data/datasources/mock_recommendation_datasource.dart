@@ -1,8 +1,10 @@
 import '../../mock/mock_recommendations.dart';
+import 'recommendation_data_source.dart';
 
-class MockRecommendationDataSource {
+class MockRecommendationDataSource implements RecommendationDataSource {
   const MockRecommendationDataSource();
 
+  @override
   Future<List<String>> fetchWordsByTags(List<String> tags) async {
     await Future<void>.delayed(const Duration(milliseconds: 80));
 
@@ -14,6 +16,7 @@ class MockRecommendationDataSource {
     return words.toSet().toList();
   }
 
+  @override
   Future<List<String>> fetchDefaultWords() async {
     await Future<void>.delayed(const Duration(milliseconds: 80));
     return mockDefaultRecommendationWords;

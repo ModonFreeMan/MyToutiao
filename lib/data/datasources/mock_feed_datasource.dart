@@ -1,9 +1,11 @@
 import '../../mock/mock_feed_items.dart';
+import 'feed_data_source.dart';
 import '../models/feed_item.dart';
 
-class MockFeedDataSource {
+class MockFeedDataSource implements FeedDataSource {
   const MockFeedDataSource();
 
+  @override
   Future<List<FeedItem>> fetchFeedItems({
     required int page,
     required int pageSize,

@@ -1,20 +1,21 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../datasources/feed_data_source.dart';
 import '../datasources/mock_feed_datasource.dart';
 import '../models/feed_item.dart';
 
-final mockFeedDataSourceProvider = Provider<MockFeedDataSource>((ref) {
+final feedDataSourceProvider = Provider<FeedDataSource>((ref) {
   return const MockFeedDataSource();
 });
 
 final feedRepositoryProvider = Provider<FeedRepository>((ref) {
-  return FeedRepository(dataSource: ref.watch(mockFeedDataSourceProvider));
+  return FeedRepository(dataSource: ref.watch(feedDataSourceProvider));
 });
 
 class FeedRepository {
   const FeedRepository({required this.dataSource});
 
-  final MockFeedDataSource dataSource;
+  final FeedDataSource dataSource;
 
   Future<List<FeedItem>> fetchFeedItems({
     required int page,

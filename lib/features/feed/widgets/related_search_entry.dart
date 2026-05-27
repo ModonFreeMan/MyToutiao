@@ -28,7 +28,7 @@ class RelatedSearchEntry extends ConsumerWidget {
             final playbackCoordinator = ref.read(
               feedPlaybackCoordinatorProvider,
             );
-            await playbackCoordinator.pauseForFeedCovered();
+            await playbackCoordinator.handleFeedCovered();
             await ref.read(searchViewModelProvider.notifier).submitSearch(word);
 
             if (!context.mounted) {
@@ -43,7 +43,7 @@ class RelatedSearchEntry extends ConsumerWidget {
               return;
             }
 
-            await playbackCoordinator.resumeAfterFeedUncovered();
+            await playbackCoordinator.handleFeedUncovered();
           },
         );
       },

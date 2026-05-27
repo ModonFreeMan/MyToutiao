@@ -160,7 +160,7 @@ class _FeedSearchEntry extends ConsumerWidget {
                 final playbackCoordinator = ref.read(
                   feedPlaybackCoordinatorProvider,
                 );
-                await playbackCoordinator.pauseForFeedCovered();
+                await playbackCoordinator.handleFeedCovered();
 
                 if (!context.mounted) {
                   return;
@@ -172,7 +172,7 @@ class _FeedSearchEntry extends ConsumerWidget {
                   return;
                 }
 
-                await playbackCoordinator.resumeAfterFeedUncovered();
+                await playbackCoordinator.handleFeedUncovered();
               },
               child: Container(
                 height: 44,

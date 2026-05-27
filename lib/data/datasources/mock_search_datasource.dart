@@ -1,10 +1,12 @@
 import '../../mock/mock_feed_items.dart';
+import 'search_data_source.dart';
 import '../models/feed_item.dart';
 import '../models/video_feed_item.dart';
 
-class MockSearchDataSource {
+class MockSearchDataSource implements SearchDataSource {
   const MockSearchDataSource();
 
+  @override
   Future<List<VideoFeedItem>> searchVideos(String keyword) async {
     await Future<void>.delayed(const Duration(milliseconds: 250));
 

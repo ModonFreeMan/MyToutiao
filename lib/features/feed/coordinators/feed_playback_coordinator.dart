@@ -41,13 +41,13 @@ class FeedPlaybackCoordinator {
     return didFocus;
   }
 
-  Future<void> pauseForFeedCovered() async {
+  Future<void> handleFeedCovered() async {
     final playerState = _ref.read(playerControllerProvider);
     _shouldResumeWhenFeedVisible = playerState.isPlaying;
     await _ref.read(playerControllerProvider.notifier).pause();
   }
 
-  Future<void> resumeAfterFeedUncovered() async {
+  Future<void> handleFeedUncovered() async {
     if (!_shouldResumeWhenFeedVisible) {
       return;
     }
