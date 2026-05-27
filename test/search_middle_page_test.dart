@@ -1,15 +1,13 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 
-import 'package:video_player_mvp/app/app.dart';
+import 'test_app.dart';
 
 void main() {
   testWidgets('saves and shows search history', (WidgetTester tester) async {
-    SharedPreferences.setMockInitialValues(<String, Object>{});
+    final preferences = await createMockPreferences();
 
-    await tester.pumpWidget(const ProviderScope(child: App()));
+    await tester.pumpWidget(createTestApp(preferences));
     await tester.pump(const Duration(milliseconds: 400));
 
     await tester.tap(find.text('搜索你感兴趣的视频'));

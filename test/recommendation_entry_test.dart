@@ -1,17 +1,16 @@
-import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 
-import 'package:video_player_mvp/app/app.dart';
 import 'package:video_player_mvp/features/search/widgets/search_video_result_item.dart';
+
+import 'test_app.dart';
 
 void main() {
   testWidgets('opens search result page from related search word', (
     WidgetTester tester,
   ) async {
-    SharedPreferences.setMockInitialValues(<String, Object>{});
+    final preferences = await createMockPreferences();
 
-    await tester.pumpWidget(const ProviderScope(child: App()));
+    await tester.pumpWidget(createTestApp(preferences));
     await tester.pump(const Duration(milliseconds: 500));
     await tester.pump(const Duration(milliseconds: 300));
 

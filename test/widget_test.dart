@@ -3,9 +3,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:video_player_mvp/app/app.dart';
 import 'package:video_player_mvp/features/feed/widgets/image_feed_card.dart';
 import 'package:video_player_mvp/mock/mock_images.dart';
+
+import 'test_app.dart';
 
 void main() {
   Finder findVerticalFeedPageView() {
@@ -20,7 +21,9 @@ void main() {
   }
 
   testWidgets('app starts on FeedPage', (WidgetTester tester) async {
-    await tester.pumpWidget(const ProviderScope(child: App()));
+    final preferences = await createMockPreferences();
+
+    await tester.pumpWidget(createTestApp(preferences));
 
     await tester.pump(const Duration(milliseconds: 400));
 
@@ -76,7 +79,9 @@ void main() {
   testWidgets('feed pages can be changed by mouse drag', (
     WidgetTester tester,
   ) async {
-    await tester.pumpWidget(const ProviderScope(child: App()));
+    final preferences = await createMockPreferences();
+
+    await tester.pumpWidget(createTestApp(preferences));
 
     await tester.pump(const Duration(milliseconds: 400));
 

@@ -5,6 +5,8 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:video_player_mvp/app/app.dart';
 import 'package:video_player_mvp/features/player/controllers/player_controller.dart';
 
+import 'test_app.dart';
+
 void main() {
   Finder findVerticalFeedPageView() {
     return find.byWidgetPredicate(
@@ -20,7 +22,8 @@ void main() {
   testWidgets('starts player for video item and stops on image item', (
     WidgetTester tester,
   ) async {
-    final container = ProviderContainer.test();
+    final preferences = await createMockPreferences();
+    final container = createTestContainer(preferences);
     addTearDown(container.dispose);
 
     await tester.pumpWidget(
