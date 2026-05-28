@@ -120,6 +120,29 @@ void main() {
       expect(fakePlatform.disposeCount, 1);
     });
 
+    test(
+      'stop clears business state before platform dispose completes',
+      () async {
+        fakePlatform.holdDispose = true;
+        addTearDown(fakePlatform.releasePendingDispose);
+        final container = ProviderContainer.test();
+        addTearDown(container.dispose);
+        final controller = container.read(playerControllerProvider.notifier);
+
+        await controller.playVideo(mockVideoFeedItems.first);
+        await _settleMicrotasks();
+        expect(container.read(playerControllerProvider).videoId, 'video_001');
+
+        final stopFuture = controller.stop();
+        await _settleMicrotasks();
+
+        expect(container.read(playerControllerProvider).videoId, isNull);
+
+        fakePlatform.releasePendingDispose();
+        await stopFuture;
+      },
+    );
+
     test('pause and resume are safe before initialization', () async {
       final container = ProviderContainer.test();
       addTearDown(container.dispose);
@@ -150,6 +173,8 @@ class _FakeVideoPlayerPlatform extends VideoPlayerPlatform {
   int playCount = 0;
   int disposeCount = 0;
   bool failInitialize = false;
+  bool holdDispose = false;
+  Completer<void>? _pendingDisposeCompleter;
 
   @override
   Future<void> init() async {}
@@ -206,8 +231,20 @@ class _FakeVideoPlayerPlatform extends VideoPlayerPlatform {
   @override
   Future<void> dispose(int playerId) async {
     disposeCount += 1;
+    if (holdDispose) {
+      _pendingDisposeCompleter = Completer<void>();
+      await _pendingDisposeCompleter!.future;
+    }
     await _eventControllers.remove(playerId)?.close();
     _positions.remove(playerId);
+  }
+
+  void releasePendingDispose() {
+    holdDispose = false;
+    final completer = _pendingDisposeCompleter;
+    if (completer != null && !completer.isCompleted) {
+      completer.complete();
+    }
   }
 
   @override

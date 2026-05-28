@@ -231,11 +231,9 @@ class PlayerController extends Notifier<PlayerState> {
       return;
     }
 
-    final token = ++_initToken;
+    ++_initToken;
+    state = const PlayerState.initial();
     await _disposeCurrent();
-    if (token == _initToken) {
-      state = const PlayerState.initial();
-    }
   }
 
   void setLandscapeRendering(bool isLandscapeRendering) {
@@ -247,11 +245,9 @@ class PlayerController extends Notifier<PlayerState> {
   }
 
   Future<void> stop() async {
-    final token = ++_initToken;
+    ++_initToken;
+    state = const PlayerState.initial();
     await _disposeCurrent();
-    if (token == _initToken) {
-      state = const PlayerState.initial();
-    }
   }
 
   void _syncFromController() {
