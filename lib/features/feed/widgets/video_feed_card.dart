@@ -1,11 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter/services.dart';
 
+import '../../../core/constants/route_constants.dart';
 import '../../../data/models/video_feed_item.dart';
 import '../../player/controllers/player_controller.dart';
+import '../../player/widgets/landscape_button.dart';
 import '../../player/widgets/player_progress_bar.dart';
 import '../../player/widgets/quality_switch_button.dart';
 import '../../player/widgets/video_player_view.dart';
+import '../coordinators/feed_playback_coordinator.dart';
 import 'feed_content_info.dart';
 import 'related_search_entry.dart';
 import 'right_action_bar.dart';
@@ -38,21 +42,9 @@ class VideoFeedCard extends ConsumerWidget {
           Expanded(
             child: GestureDetector(
               behavior: HitTestBehavior.opaque,
-              onTap: () {
-                final playerController = ref.read(
-                  playerControllerProvider.notifier,
-                );
-                if (isLoadingVideo) {
-                  return;
-                }
-
-                if (!isCurrentVideo || !playerState.isInitialized) {
-                  playerController.playVideo(item, forceRestart: true);
-                  return;
-                }
-
-                playerController.togglePlayPause();
-              },
+              onTap: () => ref
+                  .read(feedPlaybackCoordinatorProvider)
+                  .handleVideoCardTapped(item),
               child: Stack(
                 fit: StackFit.expand,
                 children: [
@@ -116,6 +108,16 @@ class VideoFeedCard extends ConsumerWidget {
                     child: QualitySwitchButton(item: item),
                   ),
                   Positioned(
+                    top: MediaQuery.paddingOf(context).top + 62,
+                    right: 16,
+                    child: LandscapeButton(
+                      enabled:
+                          !playerState.isInitializing &&
+                          playerState.error == null,
+                      onPressed: () => _openLandscapePlayer(context, ref),
+                    ),
+                  ),
+                  Positioned(
                     left: 16,
                     right: 88,
                     bottom: 40,
@@ -146,6 +148,29 @@ class VideoFeedCard extends ConsumerWidget {
         ],
       ),
     );
+  }
+
+  Future<void> _openLandscapePlayer(BuildContext context, WidgetRef ref) async {
+    final playbackCoordinator = ref.read(feedPlaybackCoordinatorProvider);
+    await playbackCoordinator.handleLandscapeRequested(item);
+
+    await SystemChrome.setPreferredOrientations(const [
+      DeviceOrientation.landscapeLeft,
+      DeviceOrientation.landscapeRight,
+    ]);
+
+    if (!context.mounted) {
+      playbackCoordinator.handleLandscapeClosed();
+      return;
+    }
+
+    try {
+      await Navigator.of(
+        context,
+      ).pushNamed(RouteConstants.landscapePlayer, arguments: item);
+    } finally {
+      playbackCoordinator.handleLandscapeClosed();
+    }
   }
 }
 

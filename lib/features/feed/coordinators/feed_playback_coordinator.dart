@@ -41,6 +41,46 @@ class FeedPlaybackCoordinator {
     return didFocus;
   }
 
+  Future<void> handleVideoCardTapped(VideoFeedItem item) async {
+    final playerState = _ref.read(playerControllerProvider);
+    final playerController = _ref.read(playerControllerProvider.notifier);
+    final isCurrentVideo = playerState.videoId == item.id;
+    final isLoadingVideo =
+        isCurrentVideo &&
+        (playerState.isInitializing ||
+            (playerState.isInitialized && playerState.isBuffering)) &&
+        playerState.error == null;
+
+    if (isLoadingVideo) {
+      return;
+    }
+
+    if (!isCurrentVideo || !playerState.isInitialized) {
+      await playerController.playVideo(item, forceRestart: true);
+      return;
+    }
+
+    await playerController.togglePlayPause();
+  }
+
+  Future<void> handleLandscapeRequested(VideoFeedItem item) async {
+    final playerState = _ref.read(playerControllerProvider);
+    final playerController = _ref.read(playerControllerProvider.notifier);
+    final isCurrentVideo = playerState.videoId == item.id;
+
+    if (!isCurrentVideo || !playerState.isInitialized) {
+      await playerController.playVideo(item, forceRestart: true);
+    } else if (!playerState.isPlaying) {
+      await playerController.resume();
+    }
+
+    playerController.setLandscapeRendering(true);
+  }
+
+  void handleLandscapeClosed() {
+    _ref.read(playerControllerProvider.notifier).setLandscapeRendering(false);
+  }
+
   Future<void> handleFeedCovered() async {
     final playerState = _ref.read(playerControllerProvider);
     _shouldResumeWhenFeedVisible = playerState.isPlaying;

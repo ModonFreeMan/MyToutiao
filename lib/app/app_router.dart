@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../core/constants/route_constants.dart';
 import '../features/feed/pages/feed_page.dart';
+import '../features/player/pages/landscape_player_page.dart';
 import '../features/search/pages/search_middle_page.dart';
 import '../features/search/pages/search_result_page.dart';
 
@@ -13,6 +14,7 @@ class AppRouter {
       RouteConstants.feed: (_) => const FeedPage(),
       RouteConstants.search: (_) => const SearchMiddlePage(),
       RouteConstants.searchResult: (_) => const SearchResultPage(),
+      RouteConstants.landscapePlayer: (_) => const LandscapePlayerPage(),
     };
   }
 

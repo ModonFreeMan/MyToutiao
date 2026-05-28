@@ -51,6 +51,7 @@ class PlayerController extends Notifier<PlayerState> {
       currentPosition: Duration.zero,
       duration: item.duration,
       error: null,
+      isLandscapeRendering: state.isLandscapeRendering,
     );
 
     final source = item.sourceForQuality(selectedQuality);
@@ -235,6 +236,14 @@ class PlayerController extends Notifier<PlayerState> {
     if (token == _initToken) {
       state = const PlayerState.initial();
     }
+  }
+
+  void setLandscapeRendering(bool isLandscapeRendering) {
+    if (state.isLandscapeRendering == isLandscapeRendering) {
+      return;
+    }
+
+    state = state.copyWith(isLandscapeRendering: isLandscapeRendering);
   }
 
   Future<void> stop() async {

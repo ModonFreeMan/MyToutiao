@@ -17,8 +17,10 @@ class VideoPlayerView extends ConsumerWidget {
     final controller = playerState.videoId == item.id
         ? playerController.videoController
         : null;
+    final shouldHideTexture =
+        playerState.isLandscapeRendering && playerState.videoId == item.id;
 
-    if (controller == null || !playerState.isInitialized) {
+    if (controller == null || !playerState.isInitialized || shouldHideTexture) {
       return Image.network(
         item.coverUrl,
         fit: BoxFit.cover,

@@ -11,6 +11,7 @@ class PlayerState {
     required this.currentPosition,
     required this.duration,
     required this.error,
+    required this.isLandscapeRendering,
   });
 
   const PlayerState.initial()
@@ -22,7 +23,8 @@ class PlayerState {
       isBuffering = false,
       currentPosition = Duration.zero,
       duration = Duration.zero,
-      error = null;
+      error = null,
+      isLandscapeRendering = false;
 
   final String? videoId;
   final VideoQuality selectedQuality;
@@ -33,6 +35,7 @@ class PlayerState {
   final Duration currentPosition;
   final Duration duration;
   final String? error;
+  final bool isLandscapeRendering;
 
   PlayerState copyWith({
     String? videoId,
@@ -44,6 +47,7 @@ class PlayerState {
     Duration? currentPosition,
     Duration? duration,
     String? error,
+    bool? isLandscapeRendering,
     bool clearError = false,
   }) {
     return PlayerState(
@@ -56,6 +60,7 @@ class PlayerState {
       currentPosition: currentPosition ?? this.currentPosition,
       duration: duration ?? this.duration,
       error: clearError ? null : error ?? this.error,
+      isLandscapeRendering: isLandscapeRendering ?? this.isLandscapeRendering,
     );
   }
 }
