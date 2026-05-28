@@ -3,7 +3,7 @@ import 'package:flutter_test/flutter_test.dart';
 
 import 'package:video_player_mvp/features/search/widgets/search_video_result_item.dart';
 
-import 'test_app.dart';
+import '../../helpers/test_app.dart';
 
 void main() {
   testWidgets('searches videos and opens the selected feed item', (

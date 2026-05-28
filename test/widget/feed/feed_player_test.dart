@@ -5,7 +5,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:video_player_mvp/app/app.dart';
 import 'package:video_player_mvp/features/player/controllers/player_controller.dart';
 
-import 'test_app.dart';
+import '../../helpers/test_app.dart';
 
 void main() {
   Finder findVerticalFeedPageView() {

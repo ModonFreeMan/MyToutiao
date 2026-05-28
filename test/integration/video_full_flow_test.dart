@@ -8,7 +8,7 @@ import 'package:video_player_platform_interface/video_player_platform_interface.
 import 'package:video_player_mvp/app/app.dart';
 import 'package:video_player_mvp/features/player/controllers/player_controller.dart';
 
-import 'test_app.dart';
+import '../helpers/test_app.dart';
 
 void main() {
   late _FakeVideoPlayerPlatform fakeVideoPlayerPlatform;

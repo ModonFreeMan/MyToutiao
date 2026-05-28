@@ -6,7 +6,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:video_player_mvp/features/feed/widgets/image_feed_card.dart';
 import 'package:video_player_mvp/mock/mock_images.dart';
 
-import 'test_app.dart';
+import '../../helpers/test_app.dart';
 
 void main() {
   Finder findVerticalFeedPageView() {
