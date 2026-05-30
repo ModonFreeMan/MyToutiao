@@ -16,6 +16,8 @@ class FakeVideoPlayerPlatform extends VideoPlayerPlatform {
   int playCount = 0;
   int disposeCount = 0;
   bool failInitialize = false;
+  bool holdDispose = false;
+  Completer<void>? _pendingDisposeCompleter;
 
   @override
   Future<void> init() async {}
@@ -25,7 +27,7 @@ class FakeVideoPlayerPlatform extends VideoPlayerPlatform {
     final playerId = ++_nextPlayerId;
     createdUris.add(options.dataSource.uri ?? options.dataSource.asset ?? '');
     _positions[playerId] = Duration.zero;
-    _eventControllers[playerId] = StreamController<VideoEvent>();
+    _eventControllers[playerId] = StreamController<VideoEvent>.broadcast();
     return playerId;
   }
 
@@ -72,11 +74,20 @@ class FakeVideoPlayerPlatform extends VideoPlayerPlatform {
   @override
   Future<void> dispose(int playerId) async {
     disposeCount += 1;
-    final controller = _eventControllers.remove(playerId);
-    if (controller != null) {
-      unawaited(controller.close());
+    if (holdDispose) {
+      _pendingDisposeCompleter = Completer<void>();
+      await _pendingDisposeCompleter!.future;
     }
+    await _eventControllers.remove(playerId)?.close();
     _positions.remove(playerId);
+  }
+
+  void releasePendingDispose() {
+    holdDispose = false;
+    final completer = _pendingDisposeCompleter;
+    if (completer != null && !completer.isCompleted) {
+      completer.complete();
+    }
   }
 
   @override
