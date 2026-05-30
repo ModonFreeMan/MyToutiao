@@ -163,6 +163,19 @@ class FakeVideoPlayerPlatform extends VideoPlayerPlatform {
     }
   }
 
+  void emitIsPlayingState(bool isPlaying) {
+    for (final controller in _eventControllers.values) {
+      if (!controller.isClosed) {
+        controller.add(
+          VideoEvent(
+            eventType: VideoEventType.isPlayingStateUpdate,
+            isPlaying: isPlaying,
+          ),
+        );
+      }
+    }
+  }
+
   @override
   Future<void> setPlaybackSpeed(int playerId, double speed) async {}
 

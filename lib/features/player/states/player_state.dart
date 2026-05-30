@@ -7,6 +7,7 @@ class PlayerState {
     required this.isInitializing,
     required this.isInitialized,
     required this.isPlaying,
+    required this.wantsToPlay,
     required this.isBuffering,
     required this.currentPosition,
     required this.duration,
@@ -20,6 +21,7 @@ class PlayerState {
       isInitializing = false,
       isInitialized = false,
       isPlaying = false,
+      wantsToPlay = false,
       isBuffering = false,
       currentPosition = Duration.zero,
       duration = Duration.zero,
@@ -31,6 +33,7 @@ class PlayerState {
   final bool isInitializing;
   final bool isInitialized;
   final bool isPlaying;
+  final bool wantsToPlay;
   final bool isBuffering;
   final Duration currentPosition;
   final Duration duration;
@@ -43,6 +46,7 @@ class PlayerState {
     bool? isInitializing,
     bool? isInitialized,
     bool? isPlaying,
+    bool? wantsToPlay,
     bool? isBuffering,
     Duration? currentPosition,
     Duration? duration,
@@ -56,6 +60,7 @@ class PlayerState {
       isInitializing: isInitializing ?? this.isInitializing,
       isInitialized: isInitialized ?? this.isInitialized,
       isPlaying: isPlaying ?? this.isPlaying,
+      wantsToPlay: wantsToPlay ?? this.wantsToPlay,
       isBuffering: isBuffering ?? this.isBuffering,
       currentPosition: currentPosition ?? this.currentPosition,
       duration: duration ?? this.duration,

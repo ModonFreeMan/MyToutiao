@@ -154,6 +154,36 @@ void main() {
       expect(fakePlatform.pauseCount, 0);
       expect(fakePlatform.playCount, 0);
     });
+
+    test('native pause keeps playback intent until user pauses', () async {
+      final container = ProviderContainer.test();
+      addTearDown(container.dispose);
+      final controller = container.read(playerControllerProvider.notifier);
+
+      await controller.playVideo(mockVideoFeedItems.first);
+      await _settleMicrotasks();
+
+      fakePlatform.emitIsPlayingState(false);
+      await _settleMicrotasks();
+
+      var state = container.read(playerControllerProvider);
+      expect(state.isPlaying, isFalse);
+      expect(state.wantsToPlay, isTrue);
+
+      await controller.ensurePlaybackIntent(mockVideoFeedItems.first.id);
+      await _settleMicrotasks();
+
+      state = container.read(playerControllerProvider);
+      expect(state.isPlaying, isTrue);
+      expect(state.wantsToPlay, isTrue);
+
+      await controller.pause();
+      await _settleMicrotasks();
+
+      state = container.read(playerControllerProvider);
+      expect(state.isPlaying, isFalse);
+      expect(state.wantsToPlay, isFalse);
+    });
   });
 }
 

@@ -156,15 +156,23 @@ class FeedPlaybackCoordinator {
 
     if (!isCurrentVideo || !playerState.isInitialized) {
       await playerController.playVideo(item, forceRestart: true);
-    } else if (!playerState.isPlaying) {
-      await playerController.resume();
+    } else {
+      await playerController.ensurePlaybackIntent(item.id);
     }
 
     playerController.setLandscapeRendering(true);
   }
 
-  void handleLandscapeClosed() {
-    _ref.read(playerControllerProvider.notifier).setLandscapeRendering(false);
+  Future<void> handleLandscapeClosed() async {
+    final playerState = _ref.read(playerControllerProvider);
+    final playerController = _ref.read(playerControllerProvider.notifier);
+
+    playerController.setLandscapeRendering(false);
+
+    final videoId = playerState.videoId;
+    if (videoId != null) {
+      await playerController.ensurePlaybackIntent(videoId);
+    }
   }
 
   Future<void> handleFeedCovered() async {

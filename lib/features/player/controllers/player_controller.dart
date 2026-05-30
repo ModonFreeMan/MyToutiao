@@ -32,6 +32,7 @@ class PlayerController extends Notifier<PlayerState> {
     }
 
     if (!forceRestart && _controllerVideoId == item.id && state.isInitialized) {
+      state = state.copyWith(wantsToPlay: true);
       await _controller?.play();
       _syncFromController();
       return;
@@ -47,6 +48,7 @@ class PlayerController extends Notifier<PlayerState> {
       isInitializing: true,
       isInitialized: false,
       isPlaying: false,
+      wantsToPlay: true,
       isBuffering: false,
       currentPosition: Duration.zero,
       duration: item.duration,
@@ -103,7 +105,7 @@ class PlayerController extends Notifier<PlayerState> {
     }
 
     final currentController = _controller;
-    final wasPlaying = currentController?.value.isPlaying ?? state.isPlaying;
+    final shouldContinuePlaying = state.wantsToPlay;
     final previousPosition =
         currentController?.value.position ?? state.currentPosition;
     final token = ++_initToken;
@@ -116,6 +118,7 @@ class PlayerController extends Notifier<PlayerState> {
       isInitializing: true,
       isInitialized: false,
       isPlaying: false,
+      wantsToPlay: shouldContinuePlaying,
       isBuffering: false,
       currentPosition: previousPosition,
       duration: item.duration,
@@ -156,7 +159,7 @@ class PlayerController extends Notifier<PlayerState> {
         clearError: true,
       );
 
-      if (wasPlaying) {
+      if (shouldContinuePlaying) {
         await nextController.play();
       }
       _syncFromController();
@@ -170,6 +173,7 @@ class PlayerController extends Notifier<PlayerState> {
         isInitializing: false,
         isInitialized: false,
         isPlaying: false,
+        wantsToPlay: false,
         error: error.toString(),
       );
     }
@@ -183,6 +187,7 @@ class PlayerController extends Notifier<PlayerState> {
 
     if (controller.value.isPlaying) {
       final position = await controller.position ?? controller.value.position;
+      state = state.copyWith(wantsToPlay: false);
       await controller.pause();
       _syncFromController(currentPosition: position);
       return;
@@ -198,6 +203,7 @@ class PlayerController extends Notifier<PlayerState> {
     }
 
     final position = await controller.position ?? controller.value.position;
+    state = state.copyWith(wantsToPlay: false);
     await controller.pause();
     _syncFromController(currentPosition: position);
   }
@@ -209,6 +215,17 @@ class PlayerController extends Notifier<PlayerState> {
     }
 
     await _playPreservingProgress(controller);
+  }
+
+  Future<void> ensurePlaybackIntent(String videoId) async {
+    if (state.videoId != videoId ||
+        !state.isInitialized ||
+        state.isPlaying ||
+        !state.wantsToPlay) {
+      return;
+    }
+
+    await resume();
   }
 
   Future<void> seekToProgress(double progress) async {
@@ -275,6 +292,7 @@ class PlayerController extends Notifier<PlayerState> {
   }
 
   Future<void> _playPreservingProgress(VideoPlayerController controller) async {
+    state = state.copyWith(wantsToPlay: true);
     final currentPosition = state.currentPosition;
     final cachedPosition = controller.value.position;
 

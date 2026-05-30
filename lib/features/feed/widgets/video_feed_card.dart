@@ -158,7 +158,7 @@ class VideoFeedCard extends ConsumerWidget {
     ]);
 
     if (!context.mounted) {
-      playbackCoordinator.handleLandscapeClosed();
+      await playbackCoordinator.handleLandscapeClosed();
       return;
     }
 
@@ -167,7 +167,7 @@ class VideoFeedCard extends ConsumerWidget {
         context,
       ).pushNamed(RouteConstants.landscapePlayer, arguments: item);
     } finally {
-      playbackCoordinator.handleLandscapeClosed();
+      await playbackCoordinator.handleLandscapeClosed();
     }
   }
 }

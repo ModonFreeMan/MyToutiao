@@ -5,6 +5,7 @@ import 'package:video_player/video_player.dart';
 
 import '../../../data/models/video_feed_item.dart';
 import '../controllers/player_controller.dart';
+import '../states/player_state.dart';
 import '../widgets/player_progress_bar.dart';
 import '../widgets/quality_switch_button.dart';
 
@@ -18,6 +19,7 @@ class LandscapePlayerPage extends ConsumerStatefulWidget {
 
 class _LandscapePlayerPageState extends ConsumerState<LandscapePlayerPage> {
   late final PlayerController _playerController;
+  bool _isPlaybackIntentResumeScheduled = false;
 
   @override
   void initState() {
@@ -33,7 +35,6 @@ class _LandscapePlayerPageState extends ConsumerState<LandscapePlayerPage> {
   @override
   void dispose() {
     _restorePortrait();
-    _playerController.setLandscapeRendering(false);
     super.dispose();
   }
 
@@ -51,6 +52,11 @@ class _LandscapePlayerPageState extends ConsumerState<LandscapePlayerPage> {
 
     final playerState = ref.watch(playerControllerProvider);
     final playerController = ref.read(playerControllerProvider.notifier);
+    ref.listen<PlayerState>(playerControllerProvider, (_, next) {
+      _resumeIfPlaybackIntentRequiresIt(item, next);
+    });
+    _resumeIfPlaybackIntentRequiresIt(item, playerState);
+
     final isCurrentVideo = playerState.videoId == item.id;
     final controller = isCurrentVideo ? playerController.videoController : null;
     final showPlayButton =
@@ -148,6 +154,30 @@ class _LandscapePlayerPageState extends ConsumerState<LandscapePlayerPage> {
     await SystemChrome.setPreferredOrientations(const [
       DeviceOrientation.portraitUp,
     ]);
+  }
+
+  void _resumeIfPlaybackIntentRequiresIt(
+    VideoFeedItem item,
+    PlayerState playerState,
+  ) {
+    if (_isPlaybackIntentResumeScheduled ||
+        playerState.videoId != item.id ||
+        !playerState.isLandscapeRendering ||
+        !playerState.isInitialized ||
+        playerState.isPlaying ||
+        !playerState.wantsToPlay) {
+      return;
+    }
+
+    _isPlaybackIntentResumeScheduled = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      _isPlaybackIntentResumeScheduled = false;
+      if (!mounted) {
+        return;
+      }
+
+      await _playerController.ensurePlaybackIntent(item.id);
+    });
   }
 }
 

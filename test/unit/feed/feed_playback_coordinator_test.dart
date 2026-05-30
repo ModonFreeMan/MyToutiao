@@ -168,7 +168,7 @@ void main() {
       },
     );
 
-    test('prepares current video for landscape rendering', () async {
+    test('keeps paused current video paused for landscape rendering', () async {
       final container = ProviderContainer.test();
       addTearDown(container.dispose);
       final coordinator = container.read(feedPlaybackCoordinatorProvider);
@@ -180,21 +180,57 @@ void main() {
       await _settleMicrotasks();
 
       expect(container.read(playerControllerProvider).isPlaying, isFalse);
+      expect(container.read(playerControllerProvider).wantsToPlay, isFalse);
+      final playCountBeforeLandscape = fakePlatform.playCount;
 
       await coordinator.handleLandscapeRequested(item);
       await _settleMicrotasks();
 
       var state = container.read(playerControllerProvider);
       expect(state.videoId, item.id);
-      expect(state.isPlaying, isTrue);
+      expect(state.isPlaying, isFalse);
+      expect(state.wantsToPlay, isFalse);
       expect(state.isLandscapeRendering, isTrue);
+      expect(fakePlatform.playCount, playCountBeforeLandscape);
       expect(fakePlatform.createdUris, hasLength(1));
 
-      coordinator.handleLandscapeClosed();
+      await coordinator.handleLandscapeClosed();
 
       state = container.read(playerControllerProvider);
       expect(state.isLandscapeRendering, isFalse);
     });
+
+    test(
+      'landscape request resumes only when playback intent is active',
+      () async {
+        final container = ProviderContainer.test();
+        addTearDown(container.dispose);
+        final coordinator = container.read(feedPlaybackCoordinatorProvider);
+        final item = mockVideoFeedItems.first;
+
+        await coordinator.handleVideoCardTapped(item);
+        await _settleMicrotasks();
+
+        fakePlatform.emitIsPlayingState(false);
+        await _settleMicrotasks();
+
+        var state = container.read(playerControllerProvider);
+        expect(state.isPlaying, isFalse);
+        expect(state.wantsToPlay, isTrue);
+
+        final playCountBeforeLandscape = fakePlatform.playCount;
+
+        await coordinator.handleLandscapeRequested(item);
+        await _settleMicrotasks();
+
+        state = container.read(playerControllerProvider);
+        expect(state.videoId, item.id);
+        expect(state.isPlaying, isTrue);
+        expect(state.wantsToPlay, isTrue);
+        expect(state.isLandscapeRendering, isTrue);
+        expect(fakePlatform.playCount, playCountBeforeLandscape + 1);
+      },
+    );
 
     test('landscape request initializes target video when needed', () async {
       final container = ProviderContainer.test();
@@ -344,6 +380,19 @@ class _FakeVideoPlayerPlatform extends VideoPlayerPlatform {
         isPlaying: false,
       ),
     );
+  }
+
+  void emitIsPlayingState(bool isPlaying) {
+    for (final controller in _eventControllers.values) {
+      if (!controller.isClosed) {
+        controller.add(
+          VideoEvent(
+            eventType: VideoEventType.isPlayingStateUpdate,
+            isPlaying: isPlaying,
+          ),
+        );
+      }
+    }
   }
 
   @override

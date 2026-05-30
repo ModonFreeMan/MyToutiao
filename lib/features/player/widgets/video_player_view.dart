@@ -4,25 +4,39 @@ import 'package:video_player/video_player.dart';
 
 import '../../../data/models/video_feed_item.dart';
 import '../controllers/player_controller.dart';
+import '../states/player_state.dart';
 
-class VideoPlayerView extends ConsumerWidget {
+class VideoPlayerView extends ConsumerStatefulWidget {
   const VideoPlayerView({required this.item, super.key});
 
   final VideoFeedItem item;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<VideoPlayerView> createState() => _VideoPlayerViewState();
+}
+
+class _VideoPlayerViewState extends ConsumerState<VideoPlayerView> {
+  bool _isPlaybackIntentResumeScheduled = false;
+
+  @override
+  Widget build(BuildContext context) {
     final playerState = ref.watch(playerControllerProvider);
     final playerController = ref.read(playerControllerProvider.notifier);
-    final controller = playerState.videoId == item.id
+    ref.listen<PlayerState>(playerControllerProvider, (_, next) {
+      _resumeIfPlaybackIntentRequiresIt(next);
+    });
+    _resumeIfPlaybackIntentRequiresIt(playerState);
+
+    final controller = playerState.videoId == widget.item.id
         ? playerController.videoController
         : null;
     final shouldHideTexture =
-        playerState.isLandscapeRendering && playerState.videoId == item.id;
+        playerState.isLandscapeRendering &&
+        playerState.videoId == widget.item.id;
 
     if (controller == null || !playerState.isInitialized || shouldHideTexture) {
       return Image.network(
-        item.coverUrl,
+        widget.item.coverUrl,
         fit: BoxFit.cover,
         loadingBuilder: (context, child, progress) {
           if (progress == null) {
@@ -52,5 +66,28 @@ class VideoPlayerView extends ConsumerWidget {
         child: VideoPlayer(controller),
       ),
     );
+  }
+
+  void _resumeIfPlaybackIntentRequiresIt(PlayerState playerState) {
+    if (_isPlaybackIntentResumeScheduled ||
+        playerState.videoId != widget.item.id ||
+        playerState.isLandscapeRendering ||
+        !playerState.isInitialized ||
+        playerState.isPlaying ||
+        !playerState.wantsToPlay) {
+      return;
+    }
+
+    _isPlaybackIntentResumeScheduled = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      _isPlaybackIntentResumeScheduled = false;
+      if (!mounted) {
+        return;
+      }
+
+      await ref
+          .read(playerControllerProvider.notifier)
+          .ensurePlaybackIntent(widget.item.id);
+    });
   }
 }
