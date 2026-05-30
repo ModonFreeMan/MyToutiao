@@ -62,7 +62,7 @@ void main() {
     expect(playerState.isInitialized, isTrue);
     expect(playerState.isPlaying, isTrue);
 
-    expect(fakeVideoPlayerPlatform.createdUris.last, contains('bee.mp4'));
+    expect(fakeVideoPlayerPlatform.createdUris.last, contains('oceans.mp4'));
 
     await container.read(playerControllerProvider.notifier).togglePlayPause();
     await tester.pump(const Duration(milliseconds: 200));
@@ -70,5 +70,7 @@ void main() {
     playerState = container.read(playerControllerProvider);
     expect(playerState.isPlaying, isFalse);
     expect(fakeVideoPlayerPlatform.pauseCount, greaterThanOrEqualTo(2));
+
+    await tester.pump(const Duration(milliseconds: 200));
   });
 }

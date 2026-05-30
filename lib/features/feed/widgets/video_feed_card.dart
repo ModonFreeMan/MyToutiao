@@ -24,6 +24,10 @@ class VideoFeedCard extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final playerState = ref.watch(playerControllerProvider);
     final isCurrentVideo = playerState.videoId == item.id;
+    final displayedDuration =
+        isCurrentVideo && playerState.duration != Duration.zero
+        ? playerState.duration
+        : item.duration;
     final isLoadingVideo =
         isCurrentVideo &&
         (playerState.isInitializing ||
@@ -94,7 +98,7 @@ class VideoFeedCard extends ConsumerWidget {
                   top: MediaQuery.paddingOf(context).top + 16,
                   left: 16,
                   child: _TypeBadge(
-                    label: '视频 ${_formatDuration(item.duration)}',
+                    label: '视频 ${_formatDuration(displayedDuration)}',
                   ),
                 ),
                 Positioned(

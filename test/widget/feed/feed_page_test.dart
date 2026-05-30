@@ -29,7 +29,7 @@ void main() {
 
     expect(find.text('5 分钟学会篮球变向运球'), findsOneWidget);
     expect(find.text('@球场训练营'), findsOneWidget);
-    expect(find.text('视频 1:18'), findsOneWidget);
+    expect(find.text('视频 0:52'), findsOneWidget);
 
     await flingToNextPage(tester);
 
