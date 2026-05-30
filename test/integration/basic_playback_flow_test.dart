@@ -99,4 +99,83 @@ void main() {
 
     await container.read(playerControllerProvider.notifier).pause();
   });
+
+  testWidgets('quick tap after swiping to a new video suppresses autoplay', (
+    WidgetTester tester,
+  ) async {
+    final preferences = await createMockPreferences();
+    final container = createTestContainer(preferences);
+    addTearDown(container.dispose);
+
+    await tester.pumpWidget(
+      UncontrolledProviderScope(container: container, child: const App()),
+    );
+    await tester.pump(const Duration(milliseconds: 700));
+
+    await flingToNextPage(tester);
+    expect(container.read(feedViewModelProvider).currentIndex, 1);
+    expect(container.read(playerControllerProvider).videoId, isNull);
+
+    await tester.drag(findVerticalFeedPageView(), const Offset(0, -700));
+    for (var i = 0; i < 20; i += 1) {
+      await tester.pump(const Duration(milliseconds: 16));
+      if (container.read(feedViewModelProvider).currentIndex == 2) {
+        break;
+      }
+    }
+
+    expect(container.read(feedViewModelProvider).currentIndex, 2);
+
+    await tester.tapAt(tester.getCenter(findVerticalFeedPageView()));
+    await tester.pump(const Duration(milliseconds: 700));
+
+    final playerState = container.read(playerControllerProvider);
+    expect(find.text('周末城市骑行路线推荐'), findsOneWidget);
+    expect(playerState.videoId, anyOf(isNull, 'video_002'));
+    expect(playerState.isPlaying, isFalse);
+  });
+
+  testWidgets(
+    'quick pause after new video autoplay keeps video and current position',
+    (WidgetTester tester) async {
+      final preferences = await createMockPreferences();
+      final container = createTestContainer(preferences);
+      addTearDown(container.dispose);
+
+      await tester.pumpWidget(
+        UncontrolledProviderScope(container: container, child: const App()),
+      );
+      await tester.pump(const Duration(milliseconds: 700));
+
+      await flingToNextPage(tester);
+      expect(container.read(feedViewModelProvider).currentIndex, 1);
+      expect(container.read(playerControllerProvider).videoId, isNull);
+
+      await tester.drag(findVerticalFeedPageView(), const Offset(0, -700));
+      for (var i = 0; i < 40; i += 1) {
+        await tester.pump(const Duration(milliseconds: 16));
+        final playerState = container.read(playerControllerProvider);
+        if (container.read(feedViewModelProvider).currentIndex == 2 &&
+            playerState.videoId == 'video_002' &&
+            playerState.isPlaying) {
+          break;
+        }
+      }
+
+      var playerState = container.read(playerControllerProvider);
+      expect(container.read(feedViewModelProvider).currentIndex, 2);
+      expect(playerState.videoId, 'video_002');
+      expect(playerState.isPlaying, isTrue);
+
+      fakeVideoPlayerPlatform.setCurrentPosition(const Duration(seconds: 3));
+
+      await tester.tapAt(tester.getCenter(findVerticalFeedPageView()));
+      await tester.pump(const Duration(milliseconds: 300));
+
+      playerState = container.read(playerControllerProvider);
+      expect(playerState.videoId, 'video_002');
+      expect(playerState.isPlaying, isFalse);
+      expect(playerState.currentPosition, const Duration(seconds: 3));
+    },
+  );
 }

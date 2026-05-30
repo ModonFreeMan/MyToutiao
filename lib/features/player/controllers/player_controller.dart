@@ -182,7 +182,10 @@ class PlayerController extends Notifier<PlayerState> {
     }
 
     if (controller.value.isPlaying) {
+      final position = await controller.position ?? controller.value.position;
       await controller.pause();
+      _syncFromController(currentPosition: position);
+      return;
     } else {
       await controller.play();
     }
@@ -196,8 +199,9 @@ class PlayerController extends Notifier<PlayerState> {
       return;
     }
 
+    final position = await controller.position ?? controller.value.position;
     await controller.pause();
-    _syncFromController();
+    _syncFromController(currentPosition: position);
   }
 
   Future<void> resume() async {
@@ -250,13 +254,14 @@ class PlayerController extends Notifier<PlayerState> {
     await _disposeCurrent();
   }
 
-  void _syncFromController() {
+  void _syncFromController({Duration? currentPosition}) {
     final controller = _controller;
     if (controller == null || _controllerVideoId == null) {
       return;
     }
 
     final value = controller.value;
+    final duration = value.duration;
     state = state.copyWith(
       videoId: _controllerVideoId,
       selectedQuality: state.selectedQuality,
@@ -264,8 +269,11 @@ class PlayerController extends Notifier<PlayerState> {
       isInitialized: value.isInitialized,
       isPlaying: value.isPlaying,
       isBuffering: value.isBuffering,
-      currentPosition: value.position,
-      duration: value.duration,
+      currentPosition: _clampPosition(
+        currentPosition ?? value.position,
+        duration,
+      ),
+      duration: duration,
     );
   }
 

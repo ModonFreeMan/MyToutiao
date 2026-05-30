@@ -19,7 +19,11 @@ class FeedPage extends ConsumerStatefulWidget {
 }
 
 class _FeedPageState extends ConsumerState<FeedPage> {
+  static const double _tapMoveTolerance = 18;
+
   late final PageController _pageController;
+  int? _pointer;
+  Offset? _downPosition;
 
   @override
   void initState() {
@@ -89,28 +93,64 @@ class _FeedPageState extends ConsumerState<FeedPage> {
 
           return Stack(
             children: [
-              RefreshIndicator(
-                onRefresh: feedViewModel.loadInitial,
-                child: PageView.builder(
-                  controller: _pageController,
-                  scrollDirection: Axis.vertical,
-                  itemCount:
-                      feedState.items.length +
-                      (feedState.isLoadingMore ? 1 : 0),
-                  onPageChanged: feedViewModel.setCurrentIndex,
-                  itemBuilder: (context, index) {
-                    if (index >= feedState.items.length) {
-                      return const ColoredBox(
-                        color: Colors.black,
-                        child: Center(child: CircularProgressIndicator()),
-                      );
-                    }
+              Listener(
+                behavior: HitTestBehavior.opaque,
+                onPointerDown: (event) {
+                  _pointer = event.pointer;
+                  _downPosition = event.position;
+                },
+                onPointerCancel: (event) {
+                  if (_pointer == event.pointer) {
+                    _clearPointer();
+                  }
+                },
+                onPointerUp: (event) {
+                  if (_pointer != event.pointer) {
+                    return;
+                  }
 
-                    return _FeedPageItem(
-                      item: feedState.items[index],
-                      isActive: index == feedState.currentIndex,
-                    );
-                  },
+                  final downPosition = _downPosition;
+                  _clearPointer();
+                  if (downPosition == null ||
+                      (event.position - downPosition).distance >
+                          _tapMoveTolerance ||
+                      !_isCentralVideoTap(context, event.position)) {
+                    return;
+                  }
+
+                  final item = _currentItem(
+                    feedState.items,
+                    feedState.currentIndex,
+                  );
+                  if (item case final VideoFeedItem videoItem) {
+                    ref
+                        .read(feedPlaybackCoordinatorProvider)
+                        .handleVideoCardTapped(videoItem, isActive: true);
+                  }
+                },
+                child: RefreshIndicator(
+                  onRefresh: feedViewModel.loadInitial,
+                  child: PageView.builder(
+                    controller: _pageController,
+                    scrollDirection: Axis.vertical,
+                    itemCount:
+                        feedState.items.length +
+                        (feedState.isLoadingMore ? 1 : 0),
+                    onPageChanged: feedViewModel.setCurrentIndex,
+                    itemBuilder: (context, index) {
+                      if (index >= feedState.items.length) {
+                        return const ColoredBox(
+                          color: Colors.black,
+                          child: Center(child: CircularProgressIndicator()),
+                        );
+                      }
+
+                      return _FeedPageItem(
+                        item: feedState.items[index],
+                        isActive: index == feedState.currentIndex,
+                      );
+                    },
+                  ),
                 ),
               ),
               const _FeedSearchEntry(),
@@ -138,6 +178,22 @@ class _FeedPageState extends ConsumerState<FeedPage> {
         curve: Curves.easeOutCubic,
       );
     });
+  }
+
+  bool _isCentralVideoTap(BuildContext context, Offset globalPosition) {
+    final box = context.findRenderObject() as RenderBox?;
+    if (box == null) {
+      return false;
+    }
+
+    final localPosition = box.globalToLocal(globalPosition);
+    final height = box.size.height;
+    return localPosition.dy >= 96 && localPosition.dy <= height - 132;
+  }
+
+  void _clearPointer() {
+    _pointer = null;
+    _downPosition = null;
   }
 }
 

@@ -156,6 +156,27 @@ void main() {
       expect(fakePlatform.pauseCount, 0);
       expect(fakePlatform.playCount, 0);
     });
+
+    test(
+      'pause preserves platform position before cached position updates',
+      () async {
+        final container = ProviderContainer.test();
+        addTearDown(container.dispose);
+        final controller = container.read(playerControllerProvider.notifier);
+
+        await controller.playVideo(mockVideoFeedItems.first);
+        await _settleMicrotasks();
+
+        fakePlatform.setCurrentPosition(const Duration(seconds: 3));
+
+        await controller.togglePlayPause();
+        await _settleMicrotasks();
+
+        final state = container.read(playerControllerProvider);
+        expect(state.isPlaying, isFalse);
+        expect(state.currentPosition, const Duration(seconds: 3));
+      },
+    );
   });
 }
 
@@ -284,6 +305,12 @@ class _FakeVideoPlayerPlatform extends VideoPlayerPlatform {
   @override
   Future<Duration> getPosition(int playerId) async {
     return _positions[playerId] ?? Duration.zero;
+  }
+
+  void setCurrentPosition(Duration position) {
+    for (final playerId in _positions.keys) {
+      _positions[playerId] = position;
+    }
   }
 
   @override

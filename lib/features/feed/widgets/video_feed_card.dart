@@ -40,102 +40,96 @@ class VideoFeedCard extends ConsumerWidget {
       child: Column(
         children: [
           Expanded(
-            child: GestureDetector(
-              behavior: HitTestBehavior.opaque,
-              onTap: () => ref
-                  .read(feedPlaybackCoordinatorProvider)
-                  .handleVideoCardTapped(item),
-              child: Stack(
-                fit: StackFit.expand,
-                children: [
-                  VideoPlayerView(item: item),
-                  const _BottomScrim(),
-                  if (isLoadingVideo) const Center(child: _VideoLoadingView()),
-                  if (isCurrentVideo && playerState.error != null)
-                    Center(
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 28),
-                        child: DecoratedBox(
-                          decoration: BoxDecoration(
-                            color: Colors.black.withValues(alpha: 0.52),
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          child: const Padding(
-                            padding: EdgeInsets.symmetric(
-                              horizontal: 14,
-                              vertical: 10,
-                            ),
-                            child: Text(
-                              '视频加载失败，点击重试',
-                              textAlign: TextAlign.center,
-                              style: TextStyle(
-                                color: Colors.white,
-                                fontSize: 14,
-                                fontWeight: FontWeight.w700,
-                              ),
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
-                  if (showPlayButton)
-                    Center(
+            child: Stack(
+              fit: StackFit.expand,
+              children: [
+                VideoPlayerView(item: item),
+                const _BottomScrim(),
+                if (isLoadingVideo) const Center(child: _VideoLoadingView()),
+                if (isCurrentVideo && playerState.error != null)
+                  Center(
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 28),
                       child: DecoratedBox(
                         decoration: BoxDecoration(
-                          color: Colors.black.withValues(alpha: 0.34),
-                          shape: BoxShape.circle,
+                          color: Colors.black.withValues(alpha: 0.52),
+                          borderRadius: BorderRadius.circular(8),
                         ),
                         child: const Padding(
-                          padding: EdgeInsets.all(18),
-                          child: Icon(
-                            Icons.play_arrow_rounded,
-                            color: Colors.white,
-                            size: 58,
+                          padding: EdgeInsets.symmetric(
+                            horizontal: 14,
+                            vertical: 10,
+                          ),
+                          child: Text(
+                            '视频加载失败，点击重试',
+                            textAlign: TextAlign.center,
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 14,
+                              fontWeight: FontWeight.w700,
+                            ),
                           ),
                         ),
                       ),
                     ),
-                  Positioned(
-                    top: MediaQuery.paddingOf(context).top + 16,
-                    left: 16,
-                    child: _TypeBadge(
-                      label: '视频 ${_formatDuration(item.duration)}',
+                  ),
+                if (showPlayButton)
+                  Center(
+                    child: DecoratedBox(
+                      decoration: BoxDecoration(
+                        color: Colors.black.withValues(alpha: 0.34),
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Padding(
+                        padding: EdgeInsets.all(18),
+                        child: Icon(
+                          Icons.play_arrow_rounded,
+                          color: Colors.white,
+                          size: 58,
+                        ),
+                      ),
                     ),
                   ),
-                  Positioned(
-                    top: MediaQuery.paddingOf(context).top + 16,
-                    right: 16,
-                    child: QualitySwitchButton(item: item),
+                Positioned(
+                  top: MediaQuery.paddingOf(context).top + 16,
+                  left: 16,
+                  child: _TypeBadge(
+                    label: '视频 ${_formatDuration(item.duration)}',
                   ),
-                  Positioned(
-                    top: MediaQuery.paddingOf(context).top + 62,
-                    right: 16,
-                    child: LandscapeButton(
-                      enabled:
-                          !playerState.isInitializing &&
-                          playerState.error == null,
-                      onPressed: () => _openLandscapePlayer(context, ref),
-                    ),
+                ),
+                Positioned(
+                  top: MediaQuery.paddingOf(context).top + 16,
+                  right: 16,
+                  child: QualitySwitchButton(item: item),
+                ),
+                Positioned(
+                  top: MediaQuery.paddingOf(context).top + 62,
+                  right: 16,
+                  child: LandscapeButton(
+                    enabled:
+                        !playerState.isInitializing &&
+                        playerState.error == null,
+                    onPressed: () => _openLandscapePlayer(context, ref),
                   ),
-                  Positioned(
-                    left: 16,
-                    right: 88,
-                    bottom: 40,
-                    child: FeedContentInfo(item: item),
-                  ),
-                  Positioned(
-                    right: 14,
-                    bottom: 46,
-                    child: RightActionBar(statistics: item.statistics),
-                  ),
-                  Positioned(
-                    left: 0,
-                    right: 0,
-                    bottom: 0,
-                    child: PlayerProgressBar(videoId: item.id),
-                  ),
-                ],
-              ),
+                ),
+                Positioned(
+                  left: 16,
+                  right: 88,
+                  bottom: 40,
+                  child: FeedContentInfo(item: item),
+                ),
+                Positioned(
+                  right: 14,
+                  bottom: 46,
+                  child: RightActionBar(statistics: item.statistics),
+                ),
+                Positioned(
+                  left: 0,
+                  right: 0,
+                  bottom: 0,
+                  child: PlayerProgressBar(videoId: item.id),
+                ),
+              ],
             ),
           ),
           SafeArea(

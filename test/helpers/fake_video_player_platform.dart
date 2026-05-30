@@ -118,6 +118,12 @@ class FakeVideoPlayerPlatform extends VideoPlayerPlatform {
     return _positions[playerId] ?? Duration.zero;
   }
 
+  void setCurrentPosition(Duration position) {
+    for (final playerId in _positions.keys) {
+      _positions[playerId] = position;
+    }
+  }
+
   @override
   Future<void> setPlaybackSpeed(int playerId, double speed) async {}
 
