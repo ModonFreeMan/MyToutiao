@@ -7,6 +7,7 @@ import 'package:video_player_platform_interface/video_player_platform_interface.
 class FakeVideoPlayerPlatform extends VideoPlayerPlatform {
   final _eventControllers = <int, StreamController<VideoEvent>>{};
   final _positions = <int, Duration>{};
+  final _initializedPlayerIds = <int>{};
 
   final createdUris = <String>[];
   final seekedPositions = <Duration>[];
@@ -16,6 +17,7 @@ class FakeVideoPlayerPlatform extends VideoPlayerPlatform {
   int playCount = 0;
   int disposeCount = 0;
   bool failInitialize = false;
+  bool holdInitialization = false;
   bool holdDispose = false;
   Completer<void>? _pendingDisposeCompleter;
 
@@ -39,23 +41,48 @@ class FakeVideoPlayerPlatform extends VideoPlayerPlatform {
         return;
       }
 
-      if (failInitialize) {
-        controller.addError(
-          PlatformException(code: 'test', message: 'initialize failed'),
-        );
-        return;
-      }
-
-      controller.add(
-        VideoEvent(
-          eventType: VideoEventType.initialized,
-          duration: const Duration(minutes: 2),
-          size: const Size(1280, 720),
-          rotationCorrection: 0,
-        ),
-      );
+      _emitInitializationEvent(playerId, controller);
     });
     return controller.stream;
+  }
+
+  void releaseInitialization() {
+    holdInitialization = false;
+    for (final entry in _eventControllers.entries) {
+      final controller = entry.value;
+      if (!controller.isClosed) {
+        _emitInitializationEvent(entry.key, controller);
+      }
+    }
+  }
+
+  void _emitInitializationEvent(
+    int playerId,
+    StreamController<VideoEvent> controller,
+  ) {
+    if (holdInitialization) {
+      return;
+    }
+
+    if (failInitialize) {
+      controller.addError(
+        PlatformException(code: 'test', message: 'initialize failed'),
+      );
+      return;
+    }
+
+    if (!_initializedPlayerIds.add(playerId)) {
+      return;
+    }
+
+    controller.add(
+      VideoEvent(
+        eventType: VideoEventType.initialized,
+        duration: const Duration(minutes: 2),
+        size: const Size(1280, 720),
+        rotationCorrection: 0,
+      ),
+    );
   }
 
   @override
@@ -80,6 +107,7 @@ class FakeVideoPlayerPlatform extends VideoPlayerPlatform {
     }
     await _eventControllers.remove(playerId)?.close();
     _positions.remove(playerId);
+    _initializedPlayerIds.remove(playerId);
   }
 
   void releasePendingDispose() {

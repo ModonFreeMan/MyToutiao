@@ -17,9 +17,12 @@ class LandscapePlayerPage extends ConsumerStatefulWidget {
 }
 
 class _LandscapePlayerPageState extends ConsumerState<LandscapePlayerPage> {
+  late final PlayerController _playerController;
+
   @override
   void initState() {
     super.initState();
+    _playerController = ref.read(playerControllerProvider.notifier);
     SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
     SystemChrome.setPreferredOrientations(const [
       DeviceOrientation.landscapeLeft,
@@ -30,7 +33,7 @@ class _LandscapePlayerPageState extends ConsumerState<LandscapePlayerPage> {
   @override
   void dispose() {
     _restorePortrait();
-    ref.read(playerControllerProvider.notifier).setLandscapeRendering(false);
+    _playerController.setLandscapeRendering(false);
     super.dispose();
   }
 
