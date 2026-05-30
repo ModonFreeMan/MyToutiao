@@ -186,11 +186,9 @@ class PlayerController extends Notifier<PlayerState> {
       await controller.pause();
       _syncFromController(currentPosition: position);
       return;
-    } else {
-      await controller.play();
     }
 
-    _syncFromController();
+    await _playPreservingProgress(controller);
   }
 
   Future<void> pause() async {
@@ -210,8 +208,7 @@ class PlayerController extends Notifier<PlayerState> {
       return;
     }
 
-    await controller.play();
-    _syncFromController();
+    await _playPreservingProgress(controller);
   }
 
   Future<void> seekToProgress(double progress) async {
@@ -274,6 +271,24 @@ class PlayerController extends Notifier<PlayerState> {
         duration,
       ),
       duration: duration,
+    );
+  }
+
+  Future<void> _playPreservingProgress(VideoPlayerController controller) async {
+    final currentPosition = state.currentPosition;
+    final cachedPosition = controller.value.position;
+
+    if (cachedPosition < currentPosition) {
+      await controller.seekTo(currentPosition);
+    }
+
+    await controller.play();
+
+    final nextCachedPosition = controller.value.position;
+    _syncFromController(
+      currentPosition: nextCachedPosition < currentPosition
+          ? currentPosition
+          : nextCachedPosition,
     );
   }
 
