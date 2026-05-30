@@ -105,7 +105,10 @@ class FakeVideoPlayerPlatform extends VideoPlayerPlatform {
       _pendingDisposeCompleter = Completer<void>();
       await _pendingDisposeCompleter!.future;
     }
-    await _eventControllers.remove(playerId)?.close();
+    final controller = _eventControllers.remove(playerId);
+    if (controller != null) {
+      unawaited(controller.close());
+    }
     _positions.remove(playerId);
     _initializedPlayerIds.remove(playerId);
   }

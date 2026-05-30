@@ -44,6 +44,36 @@ void main() {
       expect(state.error, isNotNull);
       expect(fakePlatform.disposeCount, 2);
     });
+
+    test(
+      'continues initializing new quality while old dispose is pending',
+      () async {
+        final container = ProviderContainer.test();
+        addTearDown(container.dispose);
+        final controller = container.read(playerControllerProvider.notifier);
+        final item = mockVideoFeedItems.first;
+
+        await controller.playVideo(item);
+        await _settleMicrotasks();
+
+        fakePlatform.holdDispose = true;
+        addTearDown(fakePlatform.releasePendingDispose);
+
+        final switchFuture = controller.switchQuality(item, VideoQuality.p1080);
+        await _settleMicrotasks();
+        await _settleMicrotasks();
+
+        final state = container.read(playerControllerProvider);
+        expect(state.selectedQuality, VideoQuality.p1080);
+        expect(state.isInitialized, isTrue);
+        expect(state.isPlaying, isTrue);
+        expect(fakePlatform.createdUris, hasLength(2));
+        expect(fakePlatform.disposeCount, 1);
+
+        fakePlatform.releasePendingDispose();
+        await switchFuture;
+      },
+    );
   });
 }
 

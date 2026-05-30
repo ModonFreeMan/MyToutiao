@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:video_player/video_player.dart';
 
@@ -110,8 +112,6 @@ class PlayerController extends Notifier<PlayerState> {
         currentController?.value.position ?? state.currentPosition;
     final token = ++_initToken;
 
-    await _disposeCurrent();
-
     state = state.copyWith(
       videoId: item.id,
       selectedQuality: quality,
@@ -124,6 +124,8 @@ class PlayerController extends Notifier<PlayerState> {
       duration: item.duration,
       clearError: true,
     );
+
+    await _disposeCurrent(waitForDispose: false);
 
     final source = item.sourceForQuality(quality);
     final nextController = VideoPlayerController.networkUrl(
@@ -310,7 +312,7 @@ class PlayerController extends Notifier<PlayerState> {
     );
   }
 
-  Future<void> _disposeCurrent() async {
+  Future<void> _disposeCurrent({bool waitForDispose = true}) async {
     final controller = _controller;
     if (controller == null) {
       return;
@@ -319,7 +321,12 @@ class PlayerController extends Notifier<PlayerState> {
     controller.removeListener(_syncFromController);
     _controller = null;
     _controllerVideoId = null;
-    await controller.dispose();
+    final dispose = controller.dispose();
+    if (waitForDispose) {
+      await dispose;
+    } else {
+      unawaited(dispose);
+    }
   }
 
   Duration _clampPosition(Duration position, Duration duration) {
