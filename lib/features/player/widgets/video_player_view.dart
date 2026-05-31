@@ -4,6 +4,7 @@ import 'package:video_player/video_player.dart';
 
 import '../../../data/models/video_feed_item.dart';
 import '../controllers/player_controller.dart';
+import '../metrics/playback_startup_metrics.dart';
 import '../states/player_state.dart';
 
 class VideoPlayerView extends ConsumerStatefulWidget {
@@ -17,6 +18,7 @@ class VideoPlayerView extends ConsumerStatefulWidget {
 
 class _VideoPlayerViewState extends ConsumerState<VideoPlayerView> {
   bool _isPlaybackIntentResumeScheduled = false;
+  int? _scheduledFirstFrameSessionId;
 
   @override
   Widget build(BuildContext context) {
@@ -54,6 +56,23 @@ class _VideoPlayerViewState extends ConsumerState<VideoPlayerView> {
           );
         },
       );
+    }
+
+    final startupSession = playerController.startupSession;
+    if (playerState.videoId == widget.item.id &&
+        playerState.isInitialized &&
+        !playerState.isLandscapeRendering &&
+        startupSession != null &&
+        _scheduledFirstFrameSessionId != startupSession.sessionId) {
+      _scheduledFirstFrameSessionId = startupSession.sessionId;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) {
+          return;
+        }
+        ref
+            .read(playbackStartupMetricsProvider)
+            .markFirstFrameRendered(startupSession);
+      });
     }
 
     final size = controller.value.size;

@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../data/models/feed_item.dart';
 import '../../../data/models/video_feed_item.dart';
 import '../../player/controllers/player_controller.dart';
+import '../../player/metrics/playback_startup_metrics.dart';
 import '../view_models/feed_view_model.dart';
 
 final feedPlaybackCoordinatorProvider = Provider<FeedPlaybackCoordinator>(
@@ -29,8 +30,13 @@ class FeedPlaybackCoordinator {
     final feedState = _ref.read(feedViewModelProvider);
     final item = _itemAt(feedState.items, index);
     final playerController = _ref.read(playerControllerProvider.notifier);
+    final startupMetrics = _ref.read(playbackStartupMetricsProvider);
 
     if (item case final VideoFeedItem videoItem) {
+      final startupSession = startupMetrics.markFeedItemVisible(
+        videoId: videoItem.id,
+        feedIndex: index,
+      );
       final shouldProtectSettlingAutoplay = index != 0;
       if (shouldProtectSettlingAutoplay) {
         _settlingAutoplayVideoId = videoItem.id;
@@ -46,13 +52,18 @@ class FeedPlaybackCoordinator {
       if (_suppressedAutoplayVideoId == videoItem.id) {
         _settlingAutoplayVideoId = null;
         _settlingAutoplayExpiresAt = null;
+        startupMetrics.markSessionClosed(startupSession);
         await playerController.stopIfCurrent(videoItem.id);
         return;
       }
 
       _suppressedAutoplayVideoId = null;
-      await playerController.playVideo(videoItem);
+      await playerController.playVideo(
+        videoItem,
+        startupSession: startupSession,
+      );
     } else {
+      startupMetrics.closeActiveSession();
       _settlingAutoplayVideoId = null;
       _settlingAutoplayExpiresAt = null;
       _suppressedAutoplayVideoId = null;

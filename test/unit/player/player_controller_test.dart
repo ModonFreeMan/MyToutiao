@@ -2,6 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:video_player_mvp/data/models/video_source.dart';
 import 'package:video_player_mvp/features/player/controllers/player_controller.dart';
+import 'package:video_player_mvp/features/player/metrics/playback_startup_metrics.dart';
 import 'package:video_player_mvp/mock/mock_videos.dart';
 import 'package:video_player_platform_interface/video_player_platform_interface.dart';
 
@@ -44,6 +45,45 @@ void main() {
         expect(fakePlatform.createdUris, hasLength(1));
       },
     );
+
+    test('records startup metrics with the bound startup session', () async {
+      final container = ProviderContainer.test();
+      addTearDown(container.dispose);
+      final controller = container.read(playerControllerProvider.notifier);
+      final metrics = container.read(playbackStartupMetricsProvider);
+      final item = mockVideoFeedItems.first;
+      final startupSession = metrics.markFeedItemVisible(
+        videoId: item.id,
+        feedIndex: 0,
+      );
+
+      await controller.playVideo(item, startupSession: startupSession);
+      await _settleMicrotasks();
+
+      final json = metrics.buildReport().toJson();
+      expect(json['valid_startup_samples'], 1);
+      expect(json['valid_initialize_samples'], 1);
+    });
+
+    test('closing playback closes the bound startup session', () async {
+      final container = ProviderContainer.test();
+      addTearDown(container.dispose);
+      final controller = container.read(playerControllerProvider.notifier);
+      final metrics = container.read(playbackStartupMetricsProvider);
+      final item = mockVideoFeedItems.first;
+      final startupSession = metrics.markFeedItemVisible(
+        videoId: item.id,
+        feedIndex: 0,
+      );
+
+      await controller.playVideo(item, startupSession: startupSession);
+      await _settleMicrotasks();
+      await controller.stop();
+
+      final json = metrics.buildReport().toJson();
+      expect(json['valid_startup_samples'], 0);
+      expect(json['incomplete_sessions'], 0);
+    });
 
     test('stores error when initialization fails', () async {
       fakePlatform.failInitialize = true;

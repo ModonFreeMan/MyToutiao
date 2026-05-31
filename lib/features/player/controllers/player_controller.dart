@@ -5,6 +5,8 @@ import 'package:video_player/video_player.dart';
 
 import '../../../data/models/video_feed_item.dart';
 import '../../../data/models/video_source.dart';
+import '../metrics/playback_startup_metrics.dart';
+import '../metrics/playback_startup_session.dart';
 import '../states/player_state.dart';
 
 final playerControllerProvider =
@@ -15,25 +17,41 @@ class PlayerController extends Notifier<PlayerState> {
 
   VideoPlayerController? _controller;
   String? _controllerVideoId;
+  PlaybackStartupSessionRef? _controllerStartupSession;
+  PlaybackStartupMetrics? _startupMetrics;
   int _initToken = 0;
+  bool _lastControllerIsPlaying = false;
+  bool _lastControllerIsBuffering = false;
 
   VideoPlayerController? get videoController => _controller;
+  PlaybackStartupSessionRef? get startupSession => _controllerStartupSession;
 
   @override
   PlayerState build() {
-    ref.onDispose(_disposeCurrent);
+    _startupMetrics = ref.read(playbackStartupMetricsProvider);
+    ref.onDispose(() {
+      _closeCurrentStartupSession();
+      unawaited(_disposeCurrent());
+    });
     return const PlayerState.initial();
   }
 
   Future<void> playVideo(
     VideoFeedItem item, {
     bool forceRestart = false,
+    PlaybackStartupSessionRef? startupSession,
   }) async {
+    final startupMetrics = _metrics;
+
     if (!forceRestart && state.videoId == item.id && state.isInitializing) {
       return;
     }
 
     if (!forceRestart && _controllerVideoId == item.id && state.isInitialized) {
+      if (startupSession != null) {
+        _controllerStartupSession = startupSession;
+      }
+      _markPlayRequestedIfBound(PlaybackPlayRequestSource.playVideo);
       state = state.copyWith(wantsToPlay: true);
       await _controller?.play();
       _syncFromController();
@@ -42,6 +60,7 @@ class PlayerController extends Notifier<PlayerState> {
 
     final token = ++_initToken;
     await _disposeCurrent();
+    _controllerStartupSession = startupSession;
 
     const selectedQuality = VideoQuality.p720;
     state = PlayerState(
@@ -59,12 +78,23 @@ class PlayerController extends Notifier<PlayerState> {
     );
 
     final source = item.sourceForQuality(selectedQuality);
+    if (startupSession != null) {
+      startupMetrics
+        ..markPlayRequested(
+          startupSession,
+          source: PlaybackPlayRequestSource.playVideo,
+        )
+        ..markControllerInitializeStart(startupSession);
+    }
     final nextController = VideoPlayerController.networkUrl(
       Uri.parse(source.url),
     );
 
     try {
       await nextController.initialize().timeout(_initializeTimeout);
+      if (startupSession != null) {
+        startupMetrics.markControllerInitializeEnd(startupSession);
+      }
       if (token != _initToken) {
         await nextController.dispose();
         return;
@@ -76,6 +106,7 @@ class PlayerController extends Notifier<PlayerState> {
 
       _controller = nextController;
       _controllerVideoId = item.id;
+      _controllerStartupSession = startupSession;
 
       state = state.copyWith(
         isInitializing: false,
@@ -87,6 +118,12 @@ class PlayerController extends Notifier<PlayerState> {
       await nextController.play();
       _syncFromController();
     } catch (error) {
+      if (startupSession != null) {
+        startupMetrics.markControllerInitializeFailed(startupSession, error);
+      }
+      if (token == _initToken) {
+        _controllerStartupSession = null;
+      }
       await nextController.dispose();
       if (token != _initToken) {
         return;
@@ -111,6 +148,8 @@ class PlayerController extends Notifier<PlayerState> {
     final previousPosition =
         currentController?.value.position ?? state.currentPosition;
     final token = ++_initToken;
+    final startupMetrics = _metrics;
+    final startupSession = _controllerStartupSession;
 
     state = state.copyWith(
       videoId: item.id,
@@ -128,12 +167,18 @@ class PlayerController extends Notifier<PlayerState> {
     await _disposeCurrent(waitForDispose: false);
 
     final source = item.sourceForQuality(quality);
+    if (startupSession != null) {
+      startupMetrics.markControllerInitializeStart(startupSession);
+    }
     final nextController = VideoPlayerController.networkUrl(
       Uri.parse(source.url),
     );
 
     try {
       await nextController.initialize().timeout(_initializeTimeout);
+      if (startupSession != null) {
+        startupMetrics.markControllerInitializeEnd(startupSession);
+      }
       if (token != _initToken) {
         await nextController.dispose();
         return;
@@ -145,6 +190,7 @@ class PlayerController extends Notifier<PlayerState> {
 
       _controller = nextController;
       _controllerVideoId = item.id;
+      _controllerStartupSession = startupSession;
 
       final duration = nextController.value.duration;
       final seekPosition = _clampPosition(previousPosition, duration);
@@ -162,10 +208,19 @@ class PlayerController extends Notifier<PlayerState> {
       );
 
       if (shouldContinuePlaying) {
+        if (startupSession != null) {
+          startupMetrics.markPlayRequested(
+            startupSession,
+            source: PlaybackPlayRequestSource.switchQuality,
+          );
+        }
         await nextController.play();
       }
       _syncFromController();
     } catch (error) {
+      if (startupSession != null) {
+        startupMetrics.markControllerInitializeFailed(startupSession, error);
+      }
       await nextController.dispose();
       if (token != _initToken) {
         return;
@@ -195,6 +250,7 @@ class PlayerController extends Notifier<PlayerState> {
       return;
     }
 
+    _markPlayRequestedIfBound(PlaybackPlayRequestSource.togglePlayPause);
     await _playPreservingProgress(controller);
   }
 
@@ -210,12 +266,15 @@ class PlayerController extends Notifier<PlayerState> {
     _syncFromController(currentPosition: position);
   }
 
-  Future<void> resume() async {
+  Future<void> resume({
+    PlaybackPlayRequestSource source = PlaybackPlayRequestSource.resume,
+  }) async {
     final controller = _controller;
     if (controller == null || !controller.value.isInitialized) {
       return;
     }
 
+    _markPlayRequestedIfBound(source);
     await _playPreservingProgress(controller);
   }
 
@@ -227,7 +286,7 @@ class PlayerController extends Notifier<PlayerState> {
       return;
     }
 
-    await resume();
+    await resume(source: PlaybackPlayRequestSource.ensurePlaybackIntent);
   }
 
   Future<void> seekToProgress(double progress) async {
@@ -252,6 +311,7 @@ class PlayerController extends Notifier<PlayerState> {
     }
 
     ++_initToken;
+    _closeCurrentStartupSession();
     state = const PlayerState.initial();
     await _disposeCurrent();
   }
@@ -266,6 +326,7 @@ class PlayerController extends Notifier<PlayerState> {
 
   Future<void> stop() async {
     ++_initToken;
+    _closeCurrentStartupSession();
     state = const PlayerState.initial();
     await _disposeCurrent();
   }
@@ -278,6 +339,25 @@ class PlayerController extends Notifier<PlayerState> {
 
     final value = controller.value;
     final duration = value.duration;
+    final startupMetrics = _metrics;
+    final startupSession = _controllerStartupSession;
+    if (!_lastControllerIsPlaying && value.isPlaying) {
+      if (startupSession != null) {
+        startupMetrics.markActualPlaying(startupSession);
+      }
+    }
+    if (!_lastControllerIsBuffering && value.isBuffering) {
+      if (startupSession != null) {
+        startupMetrics.markBufferingStart(startupSession);
+      }
+    } else if (_lastControllerIsBuffering && !value.isBuffering) {
+      if (startupSession != null) {
+        startupMetrics.markBufferingEnd(startupSession);
+      }
+    }
+    _lastControllerIsPlaying = value.isPlaying;
+    _lastControllerIsBuffering = value.isBuffering;
+
     state = state.copyWith(
       videoId: _controllerVideoId,
       selectedQuality: state.selectedQuality,
@@ -315,12 +395,19 @@ class PlayerController extends Notifier<PlayerState> {
   Future<void> _disposeCurrent({bool waitForDispose = true}) async {
     final controller = _controller;
     if (controller == null) {
+      _controllerVideoId = null;
+      _controllerStartupSession = null;
+      _lastControllerIsPlaying = false;
+      _lastControllerIsBuffering = false;
       return;
     }
 
     controller.removeListener(_syncFromController);
     _controller = null;
     _controllerVideoId = null;
+    _controllerStartupSession = null;
+    _lastControllerIsPlaying = false;
+    _lastControllerIsBuffering = false;
     final dispose = controller.dispose();
     if (waitForDispose) {
       await dispose;
@@ -335,5 +422,35 @@ class PlayerController extends Notifier<PlayerState> {
     }
 
     return duration;
+  }
+
+  PlaybackStartupSessionRef? _activeStartupSessionForCurrentVideo() {
+    return _controllerStartupSession;
+  }
+
+  void _closeCurrentStartupSession() {
+    final startupSession = _controllerStartupSession;
+    if (startupSession == null) {
+      return;
+    }
+    _startupMetrics?.markSessionClosed(startupSession);
+  }
+
+  void _markPlayRequestedIfBound(PlaybackPlayRequestSource source) {
+    final startupSession = _activeStartupSessionForCurrentVideo();
+    if (startupSession == null) {
+      return;
+    }
+    _metrics.markPlayRequested(startupSession, source: source);
+  }
+
+  PlaybackStartupMetrics get _metrics {
+    final startupMetrics = _startupMetrics;
+    if (startupMetrics != null) {
+      return startupMetrics;
+    }
+    final initializedMetrics = ref.read(playbackStartupMetricsProvider);
+    _startupMetrics = initializedMetrics;
+    return initializedMetrics;
   }
 }

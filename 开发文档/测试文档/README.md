@@ -2,7 +2,7 @@
 
 ## 测试目标
 
-当前测试覆盖推荐词匹配逻辑、Feed 分页状态、Feed 播放编排、Feed 覆盖恢复、搜索状态、搜索历史、播放器状态机、播放器初始化竞态、清晰度切换失败、清晰度切换集成链路、进度保持、搜索数据源、Feed 基础播放链路、横屏播放链路、搜索页面、推荐词入口，以及“视频 Feed -> 搜索 -> 搜索结果 -> 回到 Feed 定位播放”的视频全链路，确保 MVP 的核心交互可以稳定运行。
+当前测试覆盖推荐词匹配逻辑、Feed 分页状态、Feed 播放编排、Feed 覆盖恢复、搜索状态、搜索历史、播放器状态机、播放器初始化竞态、清晰度切换失败、清晰度切换集成链路、进度保持、起播性能指标归属与 baseline report、搜索数据源、Feed 基础播放链路、横屏播放链路、搜索页面、推荐词入口，以及“视频 Feed -> 搜索 -> 搜索结果 -> 回到 Feed 定位播放”的视频全链路，确保 MVP 的核心交互和观测能力可以稳定运行。
 
 ## 文档索引
 
@@ -26,6 +26,7 @@ test/
 │   │   ├── feed_playback_coordinator_test.dart
 │   │   └── feed_view_model_test.dart
 │   ├── player/
+│   │   ├── playback_startup_metrics_test.dart
 │   │   ├── player_controller_initialization_race_test.dart
 │   │   ├── player_controller_progress_test.dart
 │   │   ├── player_controller_quality_switch_test.dart
@@ -66,5 +67,5 @@ flutter test
 
 ```text
 flutter analyze: No issues found
-flutter test: All tests passed, 75/75
+flutter test: All tests passed, 85/85
 ```
