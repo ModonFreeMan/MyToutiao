@@ -9,6 +9,7 @@ import 'package:video_player_mvp/data/repositories/feed_repository.dart';
 import 'package:video_player_mvp/features/feed/coordinators/feed_playback_coordinator.dart';
 import 'package:video_player_mvp/features/feed/view_models/feed_view_model.dart';
 import 'package:video_player_mvp/features/player/controllers/player_controller.dart';
+import 'package:video_player_mvp/mock/mock_feed_items.dart';
 import 'package:video_player_mvp/mock/mock_videos.dart';
 import 'package:video_player_platform_interface/video_player_platform_interface.dart';
 
@@ -167,6 +168,74 @@ void main() {
         expect(fakePlatform.playCount, 1);
       },
     );
+
+    test('preloads current plus one video candidate', () async {
+      final container = ProviderContainer.test(
+        overrides: [
+          feedDataSourceProvider.overrideWithValue(
+            _FakeFeedDataSource(mockFeedItems),
+          ),
+        ],
+      );
+      addTearDown(container.dispose);
+      final coordinator = container.read(feedPlaybackCoordinatorProvider);
+
+      await container.read(feedViewModelProvider.notifier).loadInitial();
+      await coordinator.handleFeedCurrentChanged(0);
+      await _settleMicrotasks();
+
+      final controller = container.read(playerControllerProvider.notifier);
+      expect(controller.preloadVideoId, 'video_002');
+    });
+
+    test('skips non-video items when selecting preload candidate', () async {
+      final container = ProviderContainer.test(
+        overrides: [
+          feedDataSourceProvider.overrideWithValue(
+            _FakeFeedDataSource(mockFeedItems),
+          ),
+        ],
+      );
+      addTearDown(container.dispose);
+      final coordinator = container.read(feedPlaybackCoordinatorProvider);
+
+      await container.read(feedViewModelProvider.notifier).loadInitial();
+      await coordinator.handleFeedCurrentChanged(1);
+      await _settleMicrotasks();
+
+      final state = container.read(playerControllerProvider);
+      final controller = container.read(playerControllerProvider.notifier);
+      expect(state.videoId, isNull);
+      expect(controller.preloadVideoId, 'video_002');
+    });
+
+    test('clears preload candidate when no later video exists', () async {
+      final container = ProviderContainer.test(
+        overrides: [
+          feedDataSourceProvider.overrideWithValue(
+            _FakeFeedDataSource(mockFeedItems),
+          ),
+        ],
+      );
+      addTearDown(container.dispose);
+      final coordinator = container.read(feedPlaybackCoordinatorProvider);
+
+      await container.read(feedViewModelProvider.notifier).loadInitial();
+      await coordinator.handleFeedCurrentChanged(13);
+      await _settleMicrotasks();
+      expect(
+        container.read(playerControllerProvider.notifier).preloadVideoId,
+        'video_010',
+      );
+
+      await coordinator.handleFeedCurrentChanged(14);
+      await _settleMicrotasks();
+
+      expect(
+        container.read(playerControllerProvider.notifier).preloadVideoId,
+        isNull,
+      );
+    });
 
     test('keeps paused current video paused for landscape rendering', () async {
       final container = ProviderContainer.test();

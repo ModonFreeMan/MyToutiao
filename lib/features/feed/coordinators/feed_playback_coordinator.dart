@@ -29,6 +29,7 @@ class FeedPlaybackCoordinator {
     final token = ++_feedPlaybackToken;
     final feedState = _ref.read(feedViewModelProvider);
     final item = _itemAt(feedState.items, index);
+    final preloadCandidate = _nextVideoCandidate(feedState.items, index);
     final playerController = _ref.read(playerControllerProvider.notifier);
     final startupMetrics = _ref.read(playbackStartupMetricsProvider);
 
@@ -54,6 +55,7 @@ class FeedPlaybackCoordinator {
         _settlingAutoplayExpiresAt = null;
         startupMetrics.markSessionClosed(startupSession);
         await playerController.stopIfCurrent(videoItem.id);
+        await _schedulePreload(preloadCandidate);
         return;
       }
 
@@ -62,12 +64,14 @@ class FeedPlaybackCoordinator {
         videoItem,
         startupSession: startupSession,
       );
+      await _schedulePreload(preloadCandidate);
     } else {
       startupMetrics.closeActiveSession();
       _settlingAutoplayVideoId = null;
       _settlingAutoplayExpiresAt = null;
       _suppressedAutoplayVideoId = null;
       await playerController.stop();
+      await _schedulePreload(preloadCandidate);
     }
   }
 
@@ -207,6 +211,27 @@ class FeedPlaybackCoordinator {
     }
 
     return items[index];
+  }
+
+  VideoFeedItem? _nextVideoCandidate(List<FeedItem> items, int currentIndex) {
+    for (var index = currentIndex + 1; index < items.length; index++) {
+      final item = items[index];
+      if (item case final VideoFeedItem videoItem) {
+        return videoItem;
+      }
+    }
+
+    return null;
+  }
+
+  Future<void> _schedulePreload(VideoFeedItem? candidate) async {
+    final playerController = _ref.read(playerControllerProvider.notifier);
+    if (candidate == null) {
+      await playerController.disposePreload();
+      return;
+    }
+
+    await playerController.preloadVideo(candidate);
   }
 
   bool _isVisibleCurrentItem(VideoFeedItem item) {

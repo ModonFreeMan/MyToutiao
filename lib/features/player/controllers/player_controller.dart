@@ -23,9 +23,11 @@ class PlayerController extends Notifier<PlayerState> {
   int _initToken = 0;
   bool _lastControllerIsPlaying = false;
   bool _lastControllerIsBuffering = false;
+  String? _preloadVideoId;
 
   VideoPlayerController? get videoController => _controller;
   PlaybackStartupSessionRef? get startupSession => _controllerStartupSession;
+  String? get preloadVideoId => _preloadVideoId;
 
   @override
   PlayerState build() {
@@ -288,6 +290,18 @@ class PlayerController extends Notifier<PlayerState> {
     }
 
     await resume(source: PlaybackPlayRequestSource.ensurePlaybackIntent);
+  }
+
+  Future<void> preloadVideo(VideoFeedItem item) async {
+    if (state.videoId == item.id) {
+      return;
+    }
+
+    _preloadVideoId = item.id;
+  }
+
+  Future<void> disposePreload() async {
+    _preloadVideoId = null;
   }
 
   Future<void> seekToProgress(double progress) async {
