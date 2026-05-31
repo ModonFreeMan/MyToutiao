@@ -182,7 +182,7 @@ void main() {
 
       await container.read(feedViewModelProvider.notifier).loadInitial();
       await coordinator.handleFeedCurrentChanged(0);
-      await _settleMicrotasks();
+      await _settlePreload();
 
       final controller = container.read(playerControllerProvider.notifier);
       expect(controller.preloadVideoId, 'video_002');
@@ -204,7 +204,7 @@ void main() {
 
       await container.read(feedViewModelProvider.notifier).loadInitial();
       await coordinator.handleFeedCurrentChanged(1);
-      await _settleMicrotasks();
+      await _settlePreload();
 
       final state = container.read(playerControllerProvider);
       final controller = container.read(playerControllerProvider.notifier);
@@ -246,6 +246,88 @@ void main() {
         isFalse,
       );
     });
+
+    test(
+      'slow preload initialization does not block current feed change',
+      () async {
+        fakePlatform.holdInitialization = true;
+        final container = ProviderContainer.test(
+          overrides: [
+            feedDataSourceProvider.overrideWithValue(
+              _FakeFeedDataSource(mockFeedItems),
+            ),
+          ],
+        );
+        addTearDown(container.dispose);
+        final coordinator = container.read(feedPlaybackCoordinatorProvider);
+
+        await container.read(feedViewModelProvider.notifier).loadInitial();
+        final currentChangedFuture = coordinator.handleFeedCurrentChanged(0);
+        await _passAutoplayGrace();
+
+        expect(
+          container.read(playerControllerProvider).videoId,
+          mockVideoFeedItems.first.id,
+        );
+        expect(container.read(playerControllerProvider).isInitializing, isTrue);
+
+        fakePlatform.releaseInitializationForCreation(0);
+        await currentChangedFuture;
+        await _settleMicrotasks();
+
+        final state = container.read(playerControllerProvider);
+        final controller = container.read(playerControllerProvider.notifier);
+        expect(state.videoId, mockVideoFeedItems.first.id);
+        expect(state.isPlaying, isTrue);
+        expect(controller.preloadVideoId, 'video_002');
+        expect(controller.preloadStatus, PreloadControllerStatus.initializing);
+      },
+    );
+
+    test(
+      'rapid current changes keep only latest preload candidate visible',
+      () async {
+        fakePlatform.holdInitialization = true;
+        final container = ProviderContainer.test(
+          overrides: [
+            feedDataSourceProvider.overrideWithValue(
+              _FakeFeedDataSource(mockVideoFeedItems.take(4).toList()),
+            ),
+          ],
+        );
+        addTearDown(container.dispose);
+        final coordinator = container.read(feedPlaybackCoordinatorProvider);
+
+        await container.read(feedViewModelProvider.notifier).loadInitial();
+        final firstChangeFuture = coordinator.handleFeedCurrentChanged(0);
+        await _passAutoplayGrace();
+        fakePlatform.releaseInitializationForCreation(0);
+        await firstChangeFuture;
+        await _waitForCreatedUris(fakePlatform, 2);
+
+        final secondChangeFuture = coordinator.handleFeedCurrentChanged(1);
+        await _passAutoplayGrace();
+        fakePlatform.releaseInitializationForCreation(2);
+        await secondChangeFuture;
+        await _waitForCreatedUris(fakePlatform, 4);
+
+        final controller = container.read(playerControllerProvider.notifier);
+        expect(controller.preloadVideoId, mockVideoFeedItems[2].id);
+        expect(controller.preloadStatus, PreloadControllerStatus.initializing);
+
+        fakePlatform.releaseInitializationForCreation(1);
+        await _settlePreload();
+
+        expect(controller.preloadVideoId, mockVideoFeedItems[2].id);
+        expect(controller.preloadStatus, PreloadControllerStatus.initializing);
+
+        fakePlatform.releaseInitializationForCreation(3);
+        await _settlePreload();
+
+        expect(controller.preloadVideoId, mockVideoFeedItems[2].id);
+        expect(controller.preloadStatus, PreloadControllerStatus.preloaded);
+      },
+    );
 
     test('keeps paused current video paused for landscape rendering', () async {
       final container = ProviderContainer.test();
@@ -348,9 +430,35 @@ Future<void> _settleMicrotasks() async {
   await Future<void>.delayed(Duration.zero);
 }
 
+Future<void> _settlePreload() async {
+  for (var i = 0; i < 5; i++) {
+    await _settleMicrotasks();
+  }
+}
+
+Future<void> _passAutoplayGrace() async {
+  await Future<void>.delayed(const Duration(milliseconds: 200));
+  await _settleMicrotasks();
+}
+
+Future<void> _waitForCreatedUris(
+  _FakeVideoPlayerPlatform fakePlatform,
+  int count,
+) async {
+  for (var i = 0; i < 10; i++) {
+    if (fakePlatform.createdUris.length >= count) {
+      return;
+    }
+
+    await _settleMicrotasks();
+  }
+}
+
 class _FakeVideoPlayerPlatform extends VideoPlayerPlatform {
   final _eventControllers = <int, StreamController<VideoEvent>>{};
   final createdUris = <String>[];
+  final _createdPlayerIds = <int>[];
+  final _initializedPlayerIds = <int>{};
   final _positions = <int, Duration>{};
   int _nextPlayerId = 0;
   int pauseCount = 0;
@@ -364,6 +472,7 @@ class _FakeVideoPlayerPlatform extends VideoPlayerPlatform {
   @override
   Future<int?> createWithOptions(VideoCreationOptions options) async {
     final playerId = ++_nextPlayerId;
+    _createdPlayerIds.add(playerId);
     createdUris.add(options.dataSource.uri ?? options.dataSource.asset ?? '');
     _positions[playerId] = Duration.zero;
     _eventControllers[playerId] = StreamController<VideoEvent>.broadcast();
@@ -382,34 +491,44 @@ class _FakeVideoPlayerPlatform extends VideoPlayerPlatform {
         return;
       }
 
-      controller.add(
-        VideoEvent(
-          eventType: VideoEventType.initialized,
-          duration: const Duration(minutes: 2),
-          size: const Size(1280, 720),
-          rotationCorrection: 0,
-        ),
-      );
+      _emitInitializationEvent(playerId, controller);
     });
     return controller.stream;
   }
 
   void releaseInitialization() {
     holdInitialization = false;
-    for (final controller in _eventControllers.values) {
-      if (controller.isClosed) {
-        continue;
-      }
-
-      controller.add(
-        VideoEvent(
-          eventType: VideoEventType.initialized,
-          duration: const Duration(minutes: 2),
-          size: const Size(1280, 720),
-          rotationCorrection: 0,
-        ),
-      );
+    for (final entry in _eventControllers.entries) {
+      _emitInitializationEvent(entry.key, entry.value);
     }
+  }
+
+  void releaseInitializationForCreation(int creationIndex) {
+    final playerId = _createdPlayerIds[creationIndex];
+    final controller = _eventControllers[playerId];
+    if (controller == null || controller.isClosed) {
+      return;
+    }
+
+    _emitInitializationEvent(playerId, controller);
+  }
+
+  void _emitInitializationEvent(
+    int playerId,
+    StreamController<VideoEvent> controller,
+  ) {
+    if (controller.isClosed || !_initializedPlayerIds.add(playerId)) {
+      return;
+    }
+
+    controller.add(
+      VideoEvent(
+        eventType: VideoEventType.initialized,
+        duration: const Duration(minutes: 2),
+        size: const Size(1280, 720),
+        rotationCorrection: 0,
+      ),
+    );
   }
 
   @override
@@ -429,6 +548,7 @@ class _FakeVideoPlayerPlatform extends VideoPlayerPlatform {
   Future<void> dispose(int playerId) async {
     await _eventControllers.remove(playerId)?.close();
     _positions.remove(playerId);
+    _initializedPlayerIds.remove(playerId);
   }
 
   @override

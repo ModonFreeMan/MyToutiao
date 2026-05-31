@@ -231,7 +231,7 @@ class FeedPlaybackCoordinator {
       return;
     }
 
-    await playerController.preloadVideo(candidate);
+    unawaited(playerController.preloadVideo(candidate));
   }
 
   bool _isVisibleCurrentItem(VideoFeedItem item) {

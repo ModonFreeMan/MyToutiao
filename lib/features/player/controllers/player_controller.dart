@@ -395,9 +395,13 @@ class PlayerController extends Notifier<PlayerState> {
 
     final dispose = controller.dispose();
     if (waitForDispose) {
-      await dispose;
+      try {
+        await dispose;
+      } catch (_) {
+        // Preload cleanup is best-effort and must not leak into playback.
+      }
     } else {
-      unawaited(dispose);
+      unawaited(dispose.catchError((_) {}));
     }
   }
 

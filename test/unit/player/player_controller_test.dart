@@ -476,6 +476,152 @@ void main() {
       },
     );
 
+    test('disposePreload is idempotent when idle', () async {
+      final container = ProviderContainer.test();
+      addTearDown(container.dispose);
+      final controller = container.read(playerControllerProvider.notifier);
+
+      await controller.disposePreload();
+      await controller.disposePreload();
+
+      expect(controller.preloadVideoId, isNull);
+      expect(controller.hasPreloadController, isFalse);
+      expect(controller.preloadStatus, PreloadControllerStatus.idle);
+      expect(fakePlatform.disposeCount, 0);
+    });
+
+    test('failed preload target can be retried', () async {
+      fakePlatform.failInitialize = true;
+      final container = ProviderContainer.test();
+      addTearDown(container.dispose);
+      final controller = container.read(playerControllerProvider.notifier);
+      final preloadItem = mockVideoFeedItems[1];
+
+      await controller.preloadVideo(preloadItem);
+
+      expect(controller.preloadVideoId, preloadItem.id);
+      expect(controller.hasPreloadController, isFalse);
+      expect(controller.preloadStatus, PreloadControllerStatus.failed);
+      expect(fakePlatform.disposeCount, 1);
+
+      fakePlatform.failInitialize = false;
+      await controller.preloadVideo(preloadItem);
+
+      expect(controller.preloadVideoId, preloadItem.id);
+      expect(controller.hasPreloadController, isTrue);
+      expect(controller.preloadStatus, PreloadControllerStatus.preloaded);
+      expect(fakePlatform.createdUris, hasLength(2));
+      expect(fakePlatform.disposeCount, 1);
+    });
+
+    test(
+      'preload initialize failure swallows cleanup dispose errors',
+      () async {
+        fakePlatform
+          ..failInitialize = true
+          ..failDispose = true;
+        final container = ProviderContainer.test();
+        addTearDown(container.dispose);
+        final controller = container.read(playerControllerProvider.notifier);
+        final preloadItem = mockVideoFeedItems[1];
+
+        await expectLater(controller.preloadVideo(preloadItem), completes);
+
+        expect(controller.preloadVideoId, preloadItem.id);
+        expect(controller.hasPreloadController, isFalse);
+        expect(controller.preloadStatus, PreloadControllerStatus.failed);
+        expect(fakePlatform.disposeCount, 1);
+      },
+    );
+
+    test('stale preload completion swallows cleanup dispose errors', () async {
+      fakePlatform
+        ..holdInitialization = true
+        ..failDispose = true;
+      final container = ProviderContainer.test();
+      addTearDown(container.dispose);
+      final controller = container.read(playerControllerProvider.notifier);
+      final firstPreload = mockVideoFeedItems[1];
+      final secondPreload = mockVideoFeedItems[2];
+
+      final firstPreloadFuture = controller.preloadVideo(firstPreload);
+      await _settleMicrotasks();
+
+      final secondPreloadFuture = controller.preloadVideo(secondPreload);
+      await _settleMicrotasks();
+
+      fakePlatform.releaseInitializationForCreation(0);
+      await expectLater(firstPreloadFuture, completes);
+      await _settleMicrotasks();
+
+      expect(controller.preloadVideoId, secondPreload.id);
+      expect(controller.preloadStatus, PreloadControllerStatus.initializing);
+      expect(fakePlatform.disposeCount, 1);
+
+      fakePlatform.failDispose = false;
+      fakePlatform.releaseInitializationForCreation(1);
+      await secondPreloadFuture;
+
+      expect(controller.preloadVideoId, secondPreload.id);
+      expect(controller.preloadStatus, PreloadControllerStatus.preloaded);
+    });
+
+    test(
+      'provider dispose invalidates pending preload and disposes it once',
+      () async {
+        fakePlatform.holdInitialization = true;
+        final container = ProviderContainer.test();
+        final controller = container.read(playerControllerProvider.notifier);
+
+        final preloadFuture = controller.preloadVideo(mockVideoFeedItems[1]);
+        await _settleMicrotasks();
+
+        expect(controller.preloadStatus, PreloadControllerStatus.initializing);
+        container.dispose();
+        await _settleMicrotasks();
+
+        expect(fakePlatform.disposeCount, 0);
+
+        fakePlatform.releaseInitializationForCreation(0);
+        await preloadFuture;
+        await _settleMicrotasks();
+
+        expect(fakePlatform.disposeCount, 1);
+      },
+    );
+
+    test(
+      'preload completion does not restore paused playback intent',
+      () async {
+        final container = ProviderContainer.test();
+        addTearDown(container.dispose);
+        final controller = container.read(playerControllerProvider.notifier);
+
+        await controller.playVideo(mockVideoFeedItems.first);
+        await _settleMicrotasks();
+        await controller.pause();
+        await _settleMicrotasks();
+
+        final stateBeforePreload = container.read(playerControllerProvider);
+        final playCountBeforePreload = fakePlatform.playCount;
+        fakePlatform.holdInitialization = true;
+
+        final preloadFuture = controller.preloadVideo(mockVideoFeedItems[1]);
+        await _settleMicrotasks();
+        fakePlatform.releaseInitializationForCreation(1);
+        await preloadFuture;
+        await _settleMicrotasks();
+
+        final stateAfterPreload = container.read(playerControllerProvider);
+        expect(stateBeforePreload.wantsToPlay, isFalse);
+        expect(stateAfterPreload.videoId, stateBeforePreload.videoId);
+        expect(stateAfterPreload.wantsToPlay, isFalse);
+        expect(stateAfterPreload.isPlaying, isFalse);
+        expect(fakePlatform.playCount, playCountBeforePreload);
+        expect(controller.preloadStatus, PreloadControllerStatus.preloaded);
+      },
+    );
+
     test(
       'preload initialize failure does not affect active playback',
       () async {

@@ -18,6 +18,7 @@ class FakeVideoPlayerPlatform extends VideoPlayerPlatform {
   int playCount = 0;
   int disposeCount = 0;
   bool failInitialize = false;
+  bool failDispose = false;
   bool holdInitialization = false;
   bool holdDispose = false;
   Completer<void>? _pendingDisposeCompleter;
@@ -136,6 +137,9 @@ class FakeVideoPlayerPlatform extends VideoPlayerPlatform {
     }
     _positions.remove(playerId);
     _initializedPlayerIds.remove(playerId);
+    if (failDispose) {
+      throw PlatformException(code: 'test', message: 'dispose failed');
+    }
   }
 
   void releasePendingDispose() {
