@@ -186,6 +186,9 @@ void main() {
 
       final controller = container.read(playerControllerProvider.notifier);
       expect(controller.preloadVideoId, 'video_002');
+      expect(controller.hasPreloadController, isTrue);
+      expect(controller.isPreloadInitialized, isTrue);
+      expect(controller.preloadStatus, PreloadControllerStatus.preloaded);
     });
 
     test('skips non-video items when selecting preload candidate', () async {
@@ -207,6 +210,9 @@ void main() {
       final controller = container.read(playerControllerProvider.notifier);
       expect(state.videoId, isNull);
       expect(controller.preloadVideoId, 'video_002');
+      expect(controller.hasPreloadController, isTrue);
+      expect(controller.isPreloadInitialized, isTrue);
+      expect(fakePlatform.playCount, 0);
     });
 
     test('clears preload candidate when no later video exists', () async {
@@ -234,6 +240,10 @@ void main() {
       expect(
         container.read(playerControllerProvider.notifier).preloadVideoId,
         isNull,
+      );
+      expect(
+        container.read(playerControllerProvider.notifier).hasPreloadController,
+        isFalse,
       );
     });
 

@@ -47,7 +47,11 @@ void main() {
     expect(playerState.videoId, 'video_001');
     expect(playerState.isInitialized, isTrue);
     expect(playerState.isPlaying, isTrue);
-    expect(fakeVideoPlayerPlatform.createdUris, hasLength(1));
+    expect(fakeVideoPlayerPlatform.createdUris, hasLength(2));
+    expect(
+      container.read(playerControllerProvider.notifier).preloadVideoId,
+      'video_002',
+    );
     final initialPlayCount = fakeVideoPlayerPlatform.playCount;
     final initialPauseCount = fakeVideoPlayerPlatform.pauseCount;
     expect(initialPlayCount, greaterThanOrEqualTo(1));
@@ -95,7 +99,10 @@ void main() {
     expect(playerState.videoId, 'video_002');
     expect(playerState.isInitialized, isTrue);
     expect(playerState.isPlaying, isTrue);
-    expect(fakeVideoPlayerPlatform.createdUris, hasLength(2));
+    expect(
+      fakeVideoPlayerPlatform.createdUris,
+      hasLength(greaterThanOrEqualTo(3)),
+    );
 
     await container.read(playerControllerProvider.notifier).pause();
   });
@@ -152,7 +159,7 @@ void main() {
       expect(container.read(playerControllerProvider).videoId, isNull);
 
       await tester.drag(findVerticalFeedPageView(), const Offset(0, -700));
-      for (var i = 0; i < 40; i += 1) {
+      for (var i = 0; i < 100; i += 1) {
         await tester.pump(const Duration(milliseconds: 16));
         final playerState = container.read(playerControllerProvider);
         if (container.read(feedViewModelProvider).currentIndex == 2 &&

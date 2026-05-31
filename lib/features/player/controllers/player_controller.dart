@@ -13,6 +13,8 @@ import '../states/player_state.dart';
 final playerControllerProvider =
     NotifierProvider<PlayerController, PlayerState>(PlayerController.new);
 
+enum PreloadControllerStatus { idle, initializing, preloaded, failed }
+
 class PlayerController extends Notifier<PlayerState> {
   static const Duration _initializeTimeout = Duration(seconds: 12);
 
@@ -23,11 +25,22 @@ class PlayerController extends Notifier<PlayerState> {
   int _initToken = 0;
   bool _lastControllerIsPlaying = false;
   bool _lastControllerIsBuffering = false;
+  VideoPlayerController? _preloadController;
   String? _preloadVideoId;
+  VideoQuality? _preloadSelectedQuality;
+  PreloadControllerStatus _preloadStatus = PreloadControllerStatus.idle;
+  int _preloadToken = 0;
+  final Set<VideoPlayerController> _disposedPreloadControllers =
+      Set<VideoPlayerController>.identity();
 
   VideoPlayerController? get videoController => _controller;
   PlaybackStartupSessionRef? get startupSession => _controllerStartupSession;
   String? get preloadVideoId => _preloadVideoId;
+  VideoQuality? get preloadSelectedQuality => _preloadSelectedQuality;
+  bool get hasPreloadController => _preloadController != null;
+  bool get isPreloadInitialized =>
+      _preloadController?.value.isInitialized ?? false;
+  PreloadControllerStatus get preloadStatus => _preloadStatus;
 
   @override
   PlayerState build() {
@@ -35,6 +48,7 @@ class PlayerController extends Notifier<PlayerState> {
     ref.onDispose(() {
       _closeCurrentStartupSession();
       unawaited(_disposeCurrent());
+      unawaited(disposePreload());
     });
     return const PlayerState.initial();
   }
@@ -45,6 +59,10 @@ class PlayerController extends Notifier<PlayerState> {
     PlaybackStartupSessionRef? startupSession,
   }) async {
     final startupMetrics = _metrics;
+
+    if (_preloadVideoId == item.id) {
+      await _disposePreload(waitForDispose: false);
+    }
 
     if (!forceRestart && state.videoId == item.id && state.isInitializing) {
       return;
@@ -297,11 +315,90 @@ class PlayerController extends Notifier<PlayerState> {
       return;
     }
 
+    if (_preloadVideoId == item.id &&
+        (_preloadStatus == PreloadControllerStatus.initializing ||
+            _preloadStatus == PreloadControllerStatus.preloaded)) {
+      return;
+    }
+
+    await _disposePreload(waitForDispose: false);
+    final token = ++_preloadToken;
+    const selectedQuality = VideoQuality.p720;
     _preloadVideoId = item.id;
+    _preloadSelectedQuality = selectedQuality;
+    _preloadStatus = PreloadControllerStatus.initializing;
+
+    final source = item.sourceForQuality(selectedQuality);
+    final controller = VideoPlayerController.networkUrl(Uri.parse(source.url));
+    _preloadController = controller;
+
+    try {
+      await controller.initialize().timeout(_initializeTimeout);
+      if (token != _preloadToken ||
+          _preloadController != controller ||
+          _preloadVideoId != item.id) {
+        await _disposePreloadControllerOnce(controller);
+        return;
+      }
+
+      await controller.setLooping(true);
+      if (token != _preloadToken ||
+          _preloadController != controller ||
+          _preloadVideoId != item.id) {
+        await _disposePreloadControllerOnce(controller);
+        return;
+      }
+
+      _preloadStatus = PreloadControllerStatus.preloaded;
+    } catch (_) {
+      if (token == _preloadToken && _preloadController == controller) {
+        _preloadController = null;
+        _preloadSelectedQuality = null;
+        _preloadStatus = PreloadControllerStatus.failed;
+      }
+      await _disposePreloadControllerOnce(controller);
+    }
   }
 
   Future<void> disposePreload() async {
+    await _disposePreload();
+  }
+
+  Future<void> _disposePreload({bool waitForDispose = true}) async {
+    ++_preloadToken;
+    final controller = _preloadController;
+    final status = _preloadStatus;
+    _preloadController = null;
     _preloadVideoId = null;
+    _preloadSelectedQuality = null;
+    _preloadStatus = PreloadControllerStatus.idle;
+
+    if (controller != null && status == PreloadControllerStatus.initializing) {
+      return;
+    }
+
+    if (controller != null) {
+      await _disposePreloadControllerOnce(
+        controller,
+        waitForDispose: waitForDispose,
+      );
+    }
+  }
+
+  Future<void> _disposePreloadControllerOnce(
+    VideoPlayerController controller, {
+    bool waitForDispose = true,
+  }) async {
+    if (!_disposedPreloadControllers.add(controller)) {
+      return;
+    }
+
+    final dispose = controller.dispose();
+    if (waitForDispose) {
+      await dispose;
+    } else {
+      unawaited(dispose);
+    }
   }
 
   Future<void> seekToProgress(double progress) async {

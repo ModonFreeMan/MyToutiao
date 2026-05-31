@@ -8,6 +8,7 @@ class FakeVideoPlayerPlatform extends VideoPlayerPlatform {
   final _eventControllers = <int, StreamController<VideoEvent>>{};
   final _positions = <int, Duration>{};
   final _initializedPlayerIds = <int>{};
+  final _createdPlayerIds = <int>[];
 
   final createdUris = <String>[];
   final seekedPositions = <Duration>[];
@@ -27,6 +28,7 @@ class FakeVideoPlayerPlatform extends VideoPlayerPlatform {
   @override
   Future<int?> createWithOptions(VideoCreationOptions options) async {
     final playerId = ++_nextPlayerId;
+    _createdPlayerIds.add(playerId);
     createdUris.add(options.dataSource.uri ?? options.dataSource.asset ?? '');
     _positions[playerId] = Duration.zero;
     _eventControllers[playerId] = StreamController<VideoEvent>.broadcast();
@@ -51,16 +53,39 @@ class FakeVideoPlayerPlatform extends VideoPlayerPlatform {
     for (final entry in _eventControllers.entries) {
       final controller = entry.value;
       if (!controller.isClosed) {
-        _emitInitializationEvent(entry.key, controller);
+        _emitInitializationEvent(entry.key, controller, ignoreHold: true);
       }
     }
   }
 
+  void releaseInitializationForCreation(int creationIndex) {
+    final playerId = _createdPlayerIds[creationIndex];
+    final controller = _eventControllers[playerId];
+    if (controller == null || controller.isClosed) {
+      return;
+    }
+
+    _emitInitializationEvent(playerId, controller, ignoreHold: true);
+  }
+
+  void failInitializationForCreation(int creationIndex) {
+    final playerId = _createdPlayerIds[creationIndex];
+    final controller = _eventControllers[playerId];
+    if (controller == null || controller.isClosed) {
+      return;
+    }
+
+    controller.addError(
+      PlatformException(code: 'test', message: 'initialize failed'),
+    );
+  }
+
   void _emitInitializationEvent(
     int playerId,
-    StreamController<VideoEvent> controller,
-  ) {
-    if (holdInitialization) {
+    StreamController<VideoEvent> controller, {
+    bool ignoreHold = false,
+  }) {
+    if (holdInitialization && !ignoreHold) {
       return;
     }
 

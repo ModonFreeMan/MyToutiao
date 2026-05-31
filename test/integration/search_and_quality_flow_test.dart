@@ -86,7 +86,11 @@ void main() {
 
     expect(find.text('5 分钟学会篮球变向运球'), findsOneWidget);
     expect(find.text('720P'), findsOneWidget);
-    expect(fakeVideoPlayerPlatform.createdUris, hasLength(1));
+    expect(fakeVideoPlayerPlatform.createdUris, hasLength(2));
+    expect(
+      container.read(playerControllerProvider.notifier).preloadVideoId,
+      'video_002',
+    );
 
     await tester.tap(find.byTooltip('切换清晰度'));
     await tester.pump();
@@ -116,7 +120,7 @@ void main() {
     expect(playerState.isInitialized, isTrue);
     expect(playerState.isPlaying, isTrue);
     expect(find.text('1080P'), findsWidgets);
-    expect(fakeVideoPlayerPlatform.createdUris, hasLength(2));
+    expect(fakeVideoPlayerPlatform.createdUris, hasLength(3));
 
     await container.read(playerControllerProvider.notifier).pause();
     await tester.pump();

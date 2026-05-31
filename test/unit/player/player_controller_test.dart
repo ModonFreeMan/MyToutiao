@@ -226,7 +226,7 @@ void main() {
     });
 
     test(
-      'preloadVideo records the preload target without creating controller',
+      'preloadVideo initializes an independent controller without playing',
       () async {
         final container = ProviderContainer.test();
         addTearDown(container.dispose);
@@ -250,7 +250,12 @@ void main() {
           stateBefore.isLandscapeRendering,
         );
         expect(controller.videoController, isNull);
-        expect(fakePlatform.createdUris, isEmpty);
+        expect(controller.hasPreloadController, isTrue);
+        expect(controller.isPreloadInitialized, isTrue);
+        expect(controller.preloadStatus, PreloadControllerStatus.preloaded);
+        expect(controller.preloadSelectedQuality, VideoQuality.p720);
+        expect(fakePlatform.createdUris, hasLength(1));
+        expect(fakePlatform.playCount, 0);
       },
     );
 
@@ -274,7 +279,10 @@ void main() {
       expect(state.wantsToPlay, activeState.wantsToPlay);
       expect(state.isPlaying, activeState.isPlaying);
       expect(controller.videoController, same(activeController));
-      expect(fakePlatform.createdUris, hasLength(1));
+      expect(controller.hasPreloadController, isTrue);
+      expect(controller.isPreloadInitialized, isTrue);
+      expect(fakePlatform.createdUris, hasLength(2));
+      expect(fakePlatform.playCount, 1);
     });
 
     test(
@@ -296,8 +304,247 @@ void main() {
         await controller.disposePreload();
 
         expect(controller.preloadVideoId, isNull);
+        expect(controller.hasPreloadController, isFalse);
+        expect(controller.preloadStatus, PreloadControllerStatus.idle);
       },
     );
+
+    test(
+      'repeated preload for the same video reuses the preload slot',
+      () async {
+        final container = ProviderContainer.test();
+        addTearDown(container.dispose);
+        final controller = container.read(playerControllerProvider.notifier);
+        final preloadItem = mockVideoFeedItems[1];
+
+        await controller.preloadVideo(preloadItem);
+        await controller.preloadVideo(preloadItem);
+
+        expect(controller.preloadVideoId, preloadItem.id);
+        expect(controller.preloadStatus, PreloadControllerStatus.preloaded);
+        expect(fakePlatform.createdUris, hasLength(1));
+        expect(fakePlatform.disposeCount, 0);
+      },
+    );
+
+    test(
+      'repeated preload while initializing does not create another controller',
+      () async {
+        fakePlatform.holdInitialization = true;
+        final container = ProviderContainer.test();
+        addTearDown(container.dispose);
+        final controller = container.read(playerControllerProvider.notifier);
+        final preloadItem = mockVideoFeedItems[1];
+
+        final preloadFuture = controller.preloadVideo(preloadItem);
+        await _settleMicrotasks();
+
+        expect(controller.preloadVideoId, preloadItem.id);
+        expect(controller.preloadStatus, PreloadControllerStatus.initializing);
+        expect(fakePlatform.createdUris, hasLength(1));
+
+        await controller.preloadVideo(preloadItem);
+
+        expect(fakePlatform.createdUris, hasLength(1));
+
+        fakePlatform.releaseInitialization();
+        await preloadFuture;
+
+        expect(controller.preloadStatus, PreloadControllerStatus.preloaded);
+      },
+    );
+
+    test(
+      'preloading a new video disposes the old preload controller',
+      () async {
+        final container = ProviderContainer.test();
+        addTearDown(container.dispose);
+        final controller = container.read(playerControllerProvider.notifier);
+
+        await controller.preloadVideo(mockVideoFeedItems[1]);
+        await controller.preloadVideo(mockVideoFeedItems[2]);
+
+        expect(controller.preloadVideoId, mockVideoFeedItems[2].id);
+        expect(controller.preloadStatus, PreloadControllerStatus.preloaded);
+        expect(fakePlatform.createdUris, hasLength(2));
+        expect(fakePlatform.disposeCount, 1);
+      },
+    );
+
+    test(
+      'late stale preload initialization success does not override current preload',
+      () async {
+        fakePlatform.holdInitialization = true;
+        final container = ProviderContainer.test();
+        addTearDown(container.dispose);
+        final controller = container.read(playerControllerProvider.notifier);
+        final firstPreload = mockVideoFeedItems[1];
+        final secondPreload = mockVideoFeedItems[2];
+
+        final firstPreloadFuture = controller.preloadVideo(firstPreload);
+        await _settleMicrotasks();
+
+        final secondPreloadFuture = controller.preloadVideo(secondPreload);
+        await _settleMicrotasks();
+
+        expect(controller.preloadVideoId, secondPreload.id);
+        expect(controller.preloadStatus, PreloadControllerStatus.initializing);
+        expect(fakePlatform.disposeCount, 0);
+
+        fakePlatform.releaseInitializationForCreation(0);
+        await firstPreloadFuture;
+        await _settleMicrotasks();
+
+        expect(controller.preloadVideoId, secondPreload.id);
+        expect(controller.preloadStatus, PreloadControllerStatus.initializing);
+        expect(fakePlatform.disposeCount, 1);
+
+        fakePlatform.releaseInitializationForCreation(1);
+        await secondPreloadFuture;
+
+        expect(controller.preloadVideoId, secondPreload.id);
+        expect(controller.preloadStatus, PreloadControllerStatus.preloaded);
+        expect(fakePlatform.disposeCount, 1);
+      },
+    );
+
+    test(
+      'late stale preload initialization failure does not override current preload',
+      () async {
+        fakePlatform.holdInitialization = true;
+        final container = ProviderContainer.test();
+        addTearDown(container.dispose);
+        final controller = container.read(playerControllerProvider.notifier);
+        final firstPreload = mockVideoFeedItems[1];
+        final secondPreload = mockVideoFeedItems[2];
+
+        final firstPreloadFuture = controller.preloadVideo(firstPreload);
+        await _settleMicrotasks();
+
+        final secondPreloadFuture = controller.preloadVideo(secondPreload);
+        await _settleMicrotasks();
+
+        expect(controller.preloadVideoId, secondPreload.id);
+        expect(controller.preloadStatus, PreloadControllerStatus.initializing);
+        expect(fakePlatform.disposeCount, 0);
+
+        fakePlatform.failInitializationForCreation(0);
+        await firstPreloadFuture;
+        await _settleMicrotasks();
+
+        expect(controller.preloadVideoId, secondPreload.id);
+        expect(controller.preloadStatus, PreloadControllerStatus.initializing);
+        expect(fakePlatform.disposeCount, 1);
+
+        fakePlatform.releaseInitializationForCreation(1);
+        await secondPreloadFuture;
+
+        expect(controller.preloadVideoId, secondPreload.id);
+        expect(controller.preloadStatus, PreloadControllerStatus.preloaded);
+        expect(fakePlatform.disposeCount, 1);
+      },
+    );
+
+    test(
+      'disposePreload invalidates pending initialization and disposes once',
+      () async {
+        fakePlatform.holdInitialization = true;
+        final container = ProviderContainer.test();
+        addTearDown(container.dispose);
+        final controller = container.read(playerControllerProvider.notifier);
+        final preloadItem = mockVideoFeedItems[1];
+
+        final preloadFuture = controller.preloadVideo(preloadItem);
+        await _settleMicrotasks();
+
+        final disposeFuture = controller.disposePreload();
+        await _settleMicrotasks();
+
+        expect(controller.preloadVideoId, isNull);
+        expect(controller.hasPreloadController, isFalse);
+        expect(controller.preloadStatus, PreloadControllerStatus.idle);
+        expect(fakePlatform.disposeCount, 0);
+
+        fakePlatform.releaseInitializationForCreation(0);
+        await preloadFuture;
+        await _settleMicrotasks();
+
+        expect(controller.preloadVideoId, isNull);
+        expect(controller.preloadStatus, PreloadControllerStatus.idle);
+        expect(fakePlatform.disposeCount, 1);
+        await disposeFuture;
+      },
+    );
+
+    test(
+      'preload initialize failure does not affect active playback',
+      () async {
+        final container = ProviderContainer.test();
+        addTearDown(container.dispose);
+        final controller = container.read(playerControllerProvider.notifier);
+        final activeItem = mockVideoFeedItems.first;
+        final preloadItem = mockVideoFeedItems[1];
+
+        await controller.playVideo(activeItem);
+        await _settleMicrotasks();
+        final activeState = container.read(playerControllerProvider);
+        final activeController = controller.videoController;
+
+        fakePlatform.failInitialize = true;
+        await controller.preloadVideo(preloadItem);
+
+        final state = container.read(playerControllerProvider);
+        expect(controller.preloadVideoId, preloadItem.id);
+        expect(controller.hasPreloadController, isFalse);
+        expect(controller.preloadStatus, PreloadControllerStatus.failed);
+        expect(state.videoId, activeState.videoId);
+        expect(state.isPlaying, activeState.isPlaying);
+        expect(state.wantsToPlay, activeState.wantsToPlay);
+        expect(state.error, activeState.error);
+        expect(controller.videoController, same(activeController));
+        expect(fakePlatform.disposeCount, 1);
+      },
+    );
+
+    test(
+      'playVideo matching preload disposes preload before active initialization',
+      () async {
+        final container = ProviderContainer.test();
+        addTearDown(container.dispose);
+        final controller = container.read(playerControllerProvider.notifier);
+        final preloadItem = mockVideoFeedItems[1];
+
+        await controller.preloadVideo(preloadItem);
+        expect(controller.hasPreloadController, isTrue);
+
+        await controller.playVideo(preloadItem);
+        await _settleMicrotasks();
+
+        final state = container.read(playerControllerProvider);
+        expect(state.videoId, preloadItem.id);
+        expect(state.isInitialized, isTrue);
+        expect(state.isPlaying, isTrue);
+        expect(controller.preloadVideoId, isNull);
+        expect(controller.hasPreloadController, isFalse);
+        expect(fakePlatform.createdUris, hasLength(2));
+        expect(fakePlatform.disposeCount, 1);
+      },
+    );
+
+    test('provider dispose releases active and preload controllers', () async {
+      final container = ProviderContainer.test();
+      final controller = container.read(playerControllerProvider.notifier);
+
+      await controller.playVideo(mockVideoFeedItems.first);
+      await controller.preloadVideo(mockVideoFeedItems[1]);
+
+      expect(fakePlatform.createdUris, hasLength(2));
+
+      container.dispose();
+      await _settleMicrotasks();
+
+      expect(fakePlatform.disposeCount, 2);
+    });
   });
 }
 
