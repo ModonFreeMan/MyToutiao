@@ -3,8 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:video_player/video_player.dart';
 
 import '../../../data/models/video_feed_item.dart';
+import '../../observability/providers/observability_provider.dart';
 import '../controllers/player_controller.dart';
-import '../metrics/playback_startup_metrics.dart';
 import '../states/player_state.dart';
 
 class VideoPlayerView extends ConsumerStatefulWidget {

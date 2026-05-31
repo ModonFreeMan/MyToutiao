@@ -4,8 +4,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../data/models/feed_item.dart';
 import '../../../data/models/video_feed_item.dart';
+import '../../observability/providers/observability_provider.dart';
 import '../../player/controllers/player_controller.dart';
-import '../../player/metrics/playback_startup_metrics.dart';
 import '../view_models/feed_view_model.dart';
 
 final feedPlaybackCoordinatorProvider = Provider<FeedPlaybackCoordinator>(

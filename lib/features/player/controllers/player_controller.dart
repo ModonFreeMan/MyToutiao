@@ -5,8 +5,9 @@ import 'package:video_player/video_player.dart';
 
 import '../../../data/models/video_feed_item.dart';
 import '../../../data/models/video_source.dart';
-import '../metrics/playback_startup_metrics.dart';
-import '../metrics/playback_startup_session.dart';
+import '../../observability/metrics/playback_startup_metrics.dart';
+import '../../observability/metrics/playback_startup_session.dart';
+import '../../observability/providers/observability_provider.dart';
 import '../states/player_state.dart';
 
 final playerControllerProvider =

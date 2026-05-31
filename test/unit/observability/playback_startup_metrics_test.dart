@@ -1,6 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:video_player_mvp/features/player/metrics/playback_startup_metrics.dart';
-import 'package:video_player_mvp/features/player/metrics/playback_startup_session.dart';
+import 'package:video_player_mvp/features/observability/metrics/playback_startup_metrics.dart';
+import 'package:video_player_mvp/features/observability/metrics/playback_startup_session.dart';
 
 void main() {
   group('PlaybackStartupMetrics', () {

@@ -25,8 +25,9 @@ test/
 │   │   ├── feed_cover_resume_test.dart
 │   │   ├── feed_playback_coordinator_test.dart
 │   │   └── feed_view_model_test.dart
+│   ├── observability/
+│   │   └── playback_startup_metrics_test.dart
 │   ├── player/
-│   │   ├── playback_startup_metrics_test.dart
 │   │   ├── player_controller_initialization_race_test.dart
 │   │   ├── player_controller_progress_test.dart
 │   │   ├── player_controller_quality_switch_test.dart

@@ -1,13 +1,7 @@
 import 'dart:math' as math;
 
-import 'package:flutter_riverpod/flutter_riverpod.dart';
-
 import 'playback_startup_report.dart';
 import 'playback_startup_session.dart';
-
-final playbackStartupMetricsProvider = Provider<PlaybackStartupMetrics>(
-  (_) => PlaybackStartupMetrics(),
-);
 
 class PlaybackStartupMetrics {
   PlaybackStartupMetrics({

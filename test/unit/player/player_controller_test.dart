@@ -1,8 +1,8 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:video_player_mvp/data/models/video_source.dart';
+import 'package:video_player_mvp/features/observability/providers/observability_provider.dart';
 import 'package:video_player_mvp/features/player/controllers/player_controller.dart';
-import 'package:video_player_mvp/features/player/metrics/playback_startup_metrics.dart';
 import 'package:video_player_mvp/mock/mock_videos.dart';
 import 'package:video_player_platform_interface/video_player_platform_interface.dart';
 

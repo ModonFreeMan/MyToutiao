@@ -35,6 +35,9 @@ class FeedViewModel extends Notifier<FeedState> {
         page: 1,
         pageSize: _pageSize,
       );
+      if (!ref.mounted) {
+        return;
+      }
 
       state = state.copyWith(
         items: items,
@@ -45,6 +48,10 @@ class FeedViewModel extends Notifier<FeedState> {
         clearError: true,
       );
     } catch (error) {
+      if (!ref.mounted) {
+        return;
+      }
+
       state = state.copyWith(isLoading: false, error: error.toString());
     }
   }
@@ -63,6 +70,9 @@ class FeedViewModel extends Notifier<FeedState> {
         page: nextPage,
         pageSize: _pageSize,
       );
+      if (!ref.mounted) {
+        return;
+      }
 
       state = state.copyWith(
         items: <FeedItem>[...state.items, ...items],
@@ -72,6 +82,10 @@ class FeedViewModel extends Notifier<FeedState> {
         clearError: true,
       );
     } catch (error) {
+      if (!ref.mounted) {
+        return;
+      }
+
       state = state.copyWith(isLoadingMore: false, error: error.toString());
     }
   }
@@ -97,6 +111,10 @@ class FeedViewModel extends Notifier<FeedState> {
 
     while (state.hasMore && !state.isLoadingMore) {
       await loadMore();
+      if (!ref.mounted) {
+        return false;
+      }
+
       index = state.items.indexWhere((item) => item.id == itemId);
       if (index != -1) {
         state = state.copyWith(currentIndex: index, clearError: true);
