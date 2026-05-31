@@ -15,6 +15,8 @@ final playerControllerProvider =
 
 enum PreloadControllerStatus { idle, initializing, preloaded, failed }
 
+enum _PreloadPromoteResult { notPromoted, promoted, stale }
+
 class PlayerController extends Notifier<PlayerState> {
   static const Duration _initializeTimeout = Duration(seconds: 12);
 
@@ -60,8 +62,24 @@ class PlayerController extends Notifier<PlayerState> {
   }) async {
     final startupMetrics = _metrics;
 
-    if (_preloadVideoId == item.id) {
-      await _disposePreload(waitForDispose: false);
+    if (!forceRestart && _canPromotePreload(item)) {
+      if (startupSession != null) {
+        startupMetrics.markPreloadHit(startupSession);
+      }
+      final promoteResult = await _tryPromotePreloadToActive(
+        item,
+        wantsToPlay: true,
+        startupSession: startupSession,
+      );
+      if (promoteResult == _PreloadPromoteResult.promoted) {
+        if (startupSession != null) {
+          startupMetrics.markPreloadPromotedToActive(startupSession);
+        }
+        return;
+      }
+      if (promoteResult == _PreloadPromoteResult.stale) {
+        return;
+      }
     }
 
     if (!forceRestart && state.videoId == item.id && state.isInitializing) {
@@ -77,6 +95,16 @@ class PlayerController extends Notifier<PlayerState> {
       await _controller?.play();
       _syncFromController();
       return;
+    }
+
+    if (!forceRestart && _preloadVideoId != null) {
+      if (startupSession != null) {
+        startupMetrics.markPreloadMiss(startupSession);
+      }
+    }
+
+    if (!forceRestart && _preloadVideoId == item.id) {
+      await _disposePreload(waitForDispose: false);
     }
 
     final token = ++_initToken;
@@ -362,6 +390,86 @@ class PlayerController extends Notifier<PlayerState> {
 
   Future<void> disposePreload() async {
     await _disposePreload();
+  }
+
+  bool _canPromotePreload(VideoFeedItem item) {
+    final preloadController = _preloadController;
+    return _preloadVideoId == item.id &&
+        _preloadStatus == PreloadControllerStatus.preloaded &&
+        preloadController != null &&
+        preloadController.value.isInitialized;
+  }
+
+  Future<_PreloadPromoteResult> _tryPromotePreloadToActive(
+    VideoFeedItem item, {
+    required bool wantsToPlay,
+    PlaybackStartupSessionRef? startupSession,
+  }) async {
+    if (!_canPromotePreload(item)) {
+      return _PreloadPromoteResult.notPromoted;
+    }
+
+    final localInitToken = ++_initToken;
+    ++_preloadToken;
+
+    final promotedController = _preloadController!;
+    final promotedVideoId = _preloadVideoId!;
+    final selectedQuality = _preloadSelectedQuality ?? VideoQuality.p720;
+    _preloadController = null;
+    _preloadVideoId = null;
+    _preloadSelectedQuality = null;
+    _preloadStatus = PreloadControllerStatus.idle;
+
+    final oldActiveController = _controller;
+
+    if (localInitToken != _initToken) {
+      await promotedController.dispose();
+      return _PreloadPromoteResult.stale;
+    }
+
+    oldActiveController?.removeListener(_syncFromController);
+    _controller = promotedController;
+    _controllerVideoId = promotedVideoId;
+    _controllerStartupSession = startupSession;
+    promotedController.addListener(_syncFromController);
+    _lastControllerIsPlaying = false;
+    _lastControllerIsBuffering = false;
+
+    state = PlayerState(
+      videoId: promotedVideoId,
+      selectedQuality: selectedQuality,
+      isInitializing: false,
+      isInitialized: true,
+      isPlaying: promotedController.value.isPlaying,
+      wantsToPlay: wantsToPlay,
+      isBuffering: promotedController.value.isBuffering,
+      currentPosition: promotedController.value.position,
+      duration: promotedController.value.duration,
+      error: null,
+      isLandscapeRendering: state.isLandscapeRendering,
+    );
+    _syncFromController();
+
+    if (wantsToPlay) {
+      _markPlayRequestedIfBound(PlaybackPlayRequestSource.playVideo);
+      await promotedController.play();
+      if (localInitToken != _initToken) {
+        if (_controller == promotedController) {
+          await _disposeCurrent();
+        }
+        if (oldActiveController != null) {
+          unawaited(oldActiveController.dispose());
+        }
+        return _PreloadPromoteResult.stale;
+      }
+      _syncFromController();
+    }
+
+    if (oldActiveController != null) {
+      unawaited(oldActiveController.dispose());
+    }
+
+    return _PreloadPromoteResult.promoted;
   }
 
   Future<void> _disposePreload({bool waitForDispose = true}) async {

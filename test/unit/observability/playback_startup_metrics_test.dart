@@ -135,12 +135,72 @@ void main() {
       });
     });
 
-    test('preload is reported as disabled N/A', () {
+    test('empty preload samples report N/A', () {
       final json = metrics.buildReport().toJson();
 
       expect(json['preload_enabled'], isFalse);
+      expect(json['preload_visible_items'], 0);
+      expect(json['preload_hits'], 0);
+      expect(json['preload_misses'], 0);
+      expect(json['preload_promoted_to_active'], 0);
       expect(json['preload_hit_rate'], isNull);
       expect(json['preload_hit_rate_label'], 'N/A');
+    });
+
+    test('preload hit contributes to hit rate', () {
+      final hit = metrics.markFeedItemVisible(
+        videoId: 'video_001',
+        feedIndex: 0,
+      );
+      metrics.markPreloadHit(hit);
+      metrics.markPreloadPromotedToActive(hit);
+
+      final json = metrics.buildReport().toJson();
+
+      expect(json['preload_enabled'], isTrue);
+      expect(json['preload_visible_items'], 1);
+      expect(json['preload_hits'], 1);
+      expect(json['preload_misses'], 0);
+      expect(json['preload_promoted_to_active'], 1);
+      expect(json['preload_hit_rate'], 1);
+      expect(json['preload_hit_rate_label'], '100.0%');
+    });
+
+    test('preload miss contributes to visible preload sample', () {
+      final miss = metrics.markFeedItemVisible(
+        videoId: 'video_001',
+        feedIndex: 0,
+      );
+      metrics.markPreloadMiss(miss);
+
+      final json = metrics.buildReport().toJson();
+
+      expect(json['preload_enabled'], isTrue);
+      expect(json['preload_visible_items'], 1);
+      expect(json['preload_hits'], 0);
+      expect(json['preload_misses'], 1);
+      expect(json['preload_hit_rate'], 0);
+      expect(json['preload_hit_rate_label'], '0.0%');
+    });
+
+    test('late preload hit event is ignored', () {
+      final expired = metrics.markFeedItemVisible(
+        videoId: 'video_001',
+        feedIndex: 0,
+      );
+      metrics.markFeedItemVisible(videoId: 'video_002', feedIndex: 1);
+
+      metrics.markPreloadHit(expired);
+      metrics.markPreloadMiss(expired);
+      metrics.markPreloadPromotedToActive(expired);
+
+      final json = metrics.buildReport().toJson();
+
+      expect(json['preload_visible_items'], 0);
+      expect(json['preload_hits'], 0);
+      expect(json['preload_misses'], 0);
+      expect(json['preload_promoted_to_active'], 0);
+      expect(json['ignored_late_events'], 3);
     });
 
     test('empty samples report null percentiles', () {
@@ -164,6 +224,9 @@ void main() {
           ..markControllerInitializeStart(invalid)
           ..markControllerInitializeEnd(invalid)
           ..markControllerInitializeFailed(invalid, Object())
+          ..markPreloadHit(invalid)
+          ..markPreloadMiss(invalid)
+          ..markPreloadPromotedToActive(invalid)
           ..markFirstFrameRendered(invalid)
           ..markActualPlaying(invalid)
           ..markBufferingStart(invalid)

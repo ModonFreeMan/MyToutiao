@@ -48,6 +48,8 @@ class PlaybackStartupSession {
   DateTime? actualPlayingAt;
 
   bool preloadHit = false;
+  bool preloadMiss = false;
+  bool preloadPromotedToActive = false;
   Object? error;
 
   final List<PlaybackBufferingSpan> bufferingSpans = <PlaybackBufferingSpan>[];

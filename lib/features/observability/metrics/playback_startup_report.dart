@@ -28,6 +28,10 @@ class PlaybackStartupBaselineReport {
     required this.incompleteSessions,
     required this.initializeFailedSessions,
     required this.ignoredLateEvents,
+    required this.preloadVisibleItems,
+    required this.preloadHits,
+    required this.preloadMisses,
+    required this.preloadPromotedToActive,
     required this.firstFrameMs,
     required this.startupMs,
     required this.initializeMs,
@@ -46,6 +50,10 @@ class PlaybackStartupBaselineReport {
   final int incompleteSessions;
   final int initializeFailedSessions;
   final int ignoredLateEvents;
+  final int preloadVisibleItems;
+  final int preloadHits;
+  final int preloadMisses;
+  final int preloadPromotedToActive;
   final PlaybackStartupPercentiles firstFrameMs;
   final PlaybackStartupPercentiles startupMs;
   final PlaybackStartupPercentiles initializeMs;
@@ -55,13 +63,28 @@ class PlaybackStartupBaselineReport {
 
   static const String metricSemantics = 'business_side_approximate_observation';
 
+  double? get preloadHitRate =>
+      preloadVisibleItems == 0 ? null : preloadHits / preloadVisibleItems;
+
+  String get preloadHitRateLabel {
+    final rate = preloadHitRate;
+    if (rate == null) {
+      return 'N/A';
+    }
+    return '${(rate * 100).toStringAsFixed(1)}%';
+  }
+
   Map<String, Object?> toJson() => <String, Object?>{
     'report_at': reportAt.toUtc().toIso8601String(),
     'buffering_window_ms': bufferingWindow.inMilliseconds,
     'metric_semantics': metricSemantics,
-    'preload_enabled': false,
-    'preload_hit_rate': null,
-    'preload_hit_rate_label': 'N/A',
+    'preload_enabled': preloadVisibleItems > 0,
+    'preload_visible_items': preloadVisibleItems,
+    'preload_hits': preloadHits,
+    'preload_misses': preloadMisses,
+    'preload_promoted_to_active': preloadPromotedToActive,
+    'preload_hit_rate': preloadHitRate,
+    'preload_hit_rate_label': preloadHitRateLabel,
     'visible_items': visibleItems,
     'valid_first_frame_samples': validFirstFrameSamples,
     'valid_startup_samples': validStartupSamples,

@@ -191,6 +191,46 @@ void main() {
       expect(controller.preloadStatus, PreloadControllerStatus.preloaded);
     });
 
+    test(
+      'current change promotes preloaded next video and schedules following preload',
+      () async {
+        final container = ProviderContainer.test(
+          overrides: [
+            feedDataSourceProvider.overrideWithValue(
+              _FakeFeedDataSource(mockVideoFeedItems.take(3).toList()),
+            ),
+          ],
+        );
+        addTearDown(container.dispose);
+        final coordinator = container.read(feedPlaybackCoordinatorProvider);
+
+        await container.read(feedViewModelProvider.notifier).loadInitial();
+        await coordinator.handleFeedCurrentChanged(0);
+        await _settlePreload();
+
+        final playerController = container.read(
+          playerControllerProvider.notifier,
+        );
+        expect(container.read(playerControllerProvider).videoId, 'video_001');
+        expect(playerController.preloadVideoId, 'video_002');
+        expect(fakePlatform.createdUris, hasLength(2));
+
+        await coordinator.handleFeedCurrentChanged(1);
+        await _settlePreload();
+
+        final state = container.read(playerControllerProvider);
+        expect(state.videoId, 'video_002');
+        expect(state.isInitialized, isTrue);
+        expect(state.isPlaying, isTrue);
+        expect(playerController.preloadVideoId, 'video_003');
+        expect(
+          playerController.preloadStatus,
+          PreloadControllerStatus.preloaded,
+        );
+        expect(fakePlatform.createdUris, hasLength(3));
+      },
+    );
+
     test('skips non-video items when selecting preload candidate', () async {
       final container = ProviderContainer.test(
         overrides: [

@@ -11,6 +11,7 @@ class FakeVideoPlayerPlatform extends VideoPlayerPlatform {
   final _createdPlayerIds = <int>[];
 
   final createdUris = <String>[];
+  final disposedPlayerIds = <int>[];
   final seekedPositions = <Duration>[];
 
   int _nextPlayerId = 0;
@@ -20,7 +21,9 @@ class FakeVideoPlayerPlatform extends VideoPlayerPlatform {
   bool failInitialize = false;
   bool failDispose = false;
   bool holdInitialization = false;
+  bool holdPlay = false;
   bool holdDispose = false;
+  Completer<void>? _pendingPlayCompleter;
   Completer<void>? _pendingDisposeCompleter;
 
   @override
@@ -127,6 +130,7 @@ class FakeVideoPlayerPlatform extends VideoPlayerPlatform {
   @override
   Future<void> dispose(int playerId) async {
     disposeCount += 1;
+    disposedPlayerIds.add(playerId);
     if (holdDispose) {
       _pendingDisposeCompleter = Completer<void>();
       await _pendingDisposeCompleter!.future;
@@ -156,12 +160,24 @@ class FakeVideoPlayerPlatform extends VideoPlayerPlatform {
   @override
   Future<void> play(int playerId) async {
     playCount += 1;
+    if (holdPlay) {
+      _pendingPlayCompleter = Completer<void>();
+      await _pendingPlayCompleter!.future;
+    }
     _eventControllers[playerId]?.add(
       VideoEvent(
         eventType: VideoEventType.isPlayingStateUpdate,
         isPlaying: true,
       ),
     );
+  }
+
+  void releasePendingPlay() {
+    holdPlay = false;
+    final completer = _pendingPlayCompleter;
+    if (completer != null && !completer.isCompleted) {
+      completer.complete();
+    }
   }
 
   @override

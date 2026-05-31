@@ -108,6 +108,39 @@ class PlaybackStartupMetrics {
     });
   }
 
+  void markPreloadHit(PlaybackStartupSessionRef session) {
+    _safeRecord(() {
+      final target = _activeSessionFor(session);
+      if (target == null) {
+        _ignoredLateEvents += 1;
+        return;
+      }
+      target.preloadHit = true;
+    });
+  }
+
+  void markPreloadMiss(PlaybackStartupSessionRef session) {
+    _safeRecord(() {
+      final target = _activeSessionFor(session);
+      if (target == null) {
+        _ignoredLateEvents += 1;
+        return;
+      }
+      target.preloadMiss = true;
+    });
+  }
+
+  void markPreloadPromotedToActive(PlaybackStartupSessionRef session) {
+    _safeRecord(() {
+      final target = _activeSessionFor(session);
+      if (target == null) {
+        _ignoredLateEvents += 1;
+        return;
+      }
+      target.preloadPromotedToActive = true;
+    });
+  }
+
   void markFirstFrameRendered(PlaybackStartupSessionRef session) {
     _safeRecord(() {
       final target = _activeSessionFor(session);
@@ -224,6 +257,10 @@ class PlaybackStartupMetrics {
     var expiredSessions = 0;
     var incompleteSessions = 0;
     var initializeFailedSessions = 0;
+    var preloadVisibleItems = 0;
+    var preloadHits = 0;
+    var preloadMisses = 0;
+    var preloadPromotedToActive = 0;
 
     for (final session in _sessions.values) {
       if (session.status == PlaybackStartupSessionStatus.expired) {
@@ -235,6 +272,18 @@ class PlaybackStartupMetrics {
       for (final entry in session.playRequestSourceCounts.entries) {
         playRequestSources[entry.key] =
             (playRequestSources[entry.key] ?? 0) + entry.value;
+      }
+      if (session.preloadHit || session.preloadMiss) {
+        preloadVisibleItems += 1;
+      }
+      if (session.preloadHit) {
+        preloadHits += 1;
+      }
+      if (session.preloadMiss) {
+        preloadMisses += 1;
+      }
+      if (session.preloadPromotedToActive) {
+        preloadPromotedToActive += 1;
       }
 
       final isUnsuccessful =
@@ -296,6 +345,10 @@ class PlaybackStartupMetrics {
       incompleteSessions: incompleteSessions,
       initializeFailedSessions: initializeFailedSessions,
       ignoredLateEvents: _ignoredLateEvents,
+      preloadVisibleItems: preloadVisibleItems,
+      preloadHits: preloadHits,
+      preloadMisses: preloadMisses,
+      preloadPromotedToActive: preloadPromotedToActive,
       firstFrameMs: _percentiles(firstFrameSamples),
       startupMs: _percentiles(startupSamples),
       initializeMs: _percentiles(initializeSamples),
