@@ -6,6 +6,7 @@ import '../../../data/models/feed_item.dart';
 import '../../../data/models/video_feed_item.dart';
 import '../../observability/providers/observability_provider.dart';
 import '../../player/controllers/player_controller.dart';
+import '../providers/feed_preload_config_provider.dart';
 import '../view_models/feed_view_model.dart';
 
 final feedPlaybackCoordinatorProvider = Provider<FeedPlaybackCoordinator>(
@@ -55,11 +56,10 @@ class FeedPlaybackCoordinator {
     }
     final direction = _updateScrollDirection(index);
     final item = _itemAt(feedState.items, index);
-    final preloadCandidate = _preloadCandidate(
-      feedState.items,
-      index,
-      direction: direction,
-    );
+    final preloadEnabled = _ref.read(feedPreloadEnabledProvider);
+    final preloadCandidate = preloadEnabled
+        ? _preloadCandidate(feedState.items, index, direction: direction)
+        : null;
     final playerController = _ref.read(playerControllerProvider.notifier);
     _cancelPendingPreloadSchedule();
     if (preloadCandidate == null && !didRequestDisposePreload) {

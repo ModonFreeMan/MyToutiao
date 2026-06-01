@@ -1,10 +1,15 @@
+import 'dart:convert';
+
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter/services.dart';
 
 import '../../../core/constants/route_constants.dart';
 import '../../../data/models/feed_item.dart';
 import '../../../data/models/image_feed_item.dart';
 import '../../../data/models/video_feed_item.dart';
+import '../../observability/providers/observability_provider.dart';
 import '../coordinators/feed_playback_coordinator.dart';
 import '../states/feed_state.dart';
 import '../view_models/feed_view_model.dart';
@@ -154,6 +159,7 @@ class _FeedPageState extends ConsumerState<FeedPage> {
                 ),
               ),
               const _FeedSearchEntry(),
+              if (kDebugMode) const _FeedDebugReportEntry(),
             ],
           );
         },
@@ -249,6 +255,45 @@ class _FeedSearchEntry extends ConsumerWidget {
                 ),
               ),
             ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _FeedDebugReportEntry extends ConsumerWidget {
+  const _FeedDebugReportEntry();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    return SafeArea(
+      child: Align(
+        alignment: Alignment.topRight,
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(0, 8, 12, 0),
+          child: IconButton.filledTonal(
+            tooltip: '复制播放指标报告',
+            onPressed: () async {
+              final buildReport = ref.read(playbackStartupDebugReportProvider);
+              final report = buildReport();
+              if (report == null) {
+                return;
+              }
+
+              const encoder = JsonEncoder.withIndent('  ');
+              await Clipboard.setData(
+                ClipboardData(text: encoder.convert(report)),
+              );
+              if (!context.mounted) {
+                return;
+              }
+
+              ScaffoldMessenger.of(
+                context,
+              ).showSnackBar(const SnackBar(content: Text('播放指标报告已复制')));
+            },
+            icon: const Icon(Icons.content_copy_rounded),
           ),
         ),
       ),
