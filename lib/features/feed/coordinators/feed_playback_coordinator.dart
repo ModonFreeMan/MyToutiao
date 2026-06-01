@@ -12,6 +12,8 @@ final feedPlaybackCoordinatorProvider = Provider<FeedPlaybackCoordinator>(
   FeedPlaybackCoordinator.new,
 );
 
+enum FeedScrollDirection { unknown, forward, backward }
+
 class FeedPlaybackCoordinator {
   FeedPlaybackCoordinator(this._ref);
 
@@ -24,12 +26,26 @@ class FeedPlaybackCoordinator {
   String? _settlingAutoplayVideoId;
   DateTime? _settlingAutoplayExpiresAt;
   int _feedPlaybackToken = 0;
+  int? _lastCurrentIndex;
+  FeedScrollDirection _lastScrollDirection = FeedScrollDirection.unknown;
+  List<String> _lastFeedItemIds = const <String>[];
+
+  void _resetScrollDirection() {
+    _lastCurrentIndex = null;
+    _lastScrollDirection = FeedScrollDirection.unknown;
+  }
 
   Future<void> handleFeedCurrentChanged(int index) async {
     final token = ++_feedPlaybackToken;
     final feedState = _ref.read(feedViewModelProvider);
+    _resetScrollDirectionIfFeedItemsReplaced(feedState.items);
+    final direction = _updateScrollDirection(index);
     final item = _itemAt(feedState.items, index);
-    final preloadCandidate = _nextVideoCandidate(feedState.items, index);
+    final preloadCandidate = _preloadCandidate(
+      feedState.items,
+      index,
+      direction: direction,
+    );
     final playerController = _ref.read(playerControllerProvider.notifier);
     final startupMetrics = _ref.read(playbackStartupMetricsProvider);
 
@@ -213,8 +229,86 @@ class FeedPlaybackCoordinator {
     return items[index];
   }
 
-  VideoFeedItem? _nextVideoCandidate(List<FeedItem> items, int currentIndex) {
-    for (var index = currentIndex + 1; index < items.length; index++) {
+  void _resetScrollDirectionIfFeedItemsReplaced(List<FeedItem> items) {
+    final itemIds = items.map((item) => item.id).toList(growable: false);
+    if (_isSameFeedItemPrefix(_lastFeedItemIds, itemIds)) {
+      _lastFeedItemIds = itemIds;
+      return;
+    }
+
+    _lastFeedItemIds = itemIds;
+    _resetScrollDirection();
+  }
+
+  bool _isSameFeedItemPrefix(List<String> previous, List<String> next) {
+    if (previous.isEmpty) {
+      return true;
+    }
+
+    if (next.length < previous.length) {
+      return false;
+    }
+
+    for (var index = 0; index < previous.length; index++) {
+      if (previous[index] != next[index]) {
+        return false;
+      }
+    }
+
+    return true;
+  }
+
+  FeedScrollDirection _updateScrollDirection(int currentIndex) {
+    final lastCurrentIndex = _lastCurrentIndex;
+    _lastCurrentIndex = currentIndex;
+
+    if (lastCurrentIndex == null) {
+      _lastScrollDirection = FeedScrollDirection.unknown;
+      return _lastScrollDirection;
+    }
+
+    if (currentIndex > lastCurrentIndex) {
+      _lastScrollDirection = FeedScrollDirection.forward;
+    } else if (currentIndex < lastCurrentIndex) {
+      _lastScrollDirection = FeedScrollDirection.backward;
+    }
+
+    return _lastScrollDirection;
+  }
+
+  VideoFeedItem? _preloadCandidate(
+    List<FeedItem> items,
+    int currentIndex, {
+    required FeedScrollDirection direction,
+  }) {
+    return switch (direction) {
+      FeedScrollDirection.forward =>
+        _nextVideoAfter(items, currentIndex) ??
+            _nextVideoBefore(items, currentIndex),
+      FeedScrollDirection.backward =>
+        _nextVideoBefore(items, currentIndex) ??
+            _nextVideoAfter(items, currentIndex),
+      FeedScrollDirection.unknown => _nextVideoAfter(items, currentIndex),
+    };
+  }
+
+  VideoFeedItem? _nextVideoAfter(List<FeedItem> items, int currentIndex) {
+    final startIndex = currentIndex < -1 ? 0 : currentIndex + 1;
+    for (var index = startIndex; index < items.length; index++) {
+      final item = items[index];
+      if (item case final VideoFeedItem videoItem) {
+        return videoItem;
+      }
+    }
+
+    return null;
+  }
+
+  VideoFeedItem? _nextVideoBefore(List<FeedItem> items, int currentIndex) {
+    final startIndex = currentIndex > items.length
+        ? items.length - 1
+        : currentIndex - 1;
+    for (var index = startIndex; index >= 0; index--) {
       final item = items[index];
       if (item case final VideoFeedItem videoItem) {
         return videoItem;

@@ -255,7 +255,69 @@ void main() {
       expect(fakePlatform.playCount, 0);
     });
 
-    test('clears preload candidate when no later video exists', () async {
+    test(
+      'forward direction falls back to previous video when no later video exists',
+      () async {
+        final container = ProviderContainer.test(
+          overrides: [
+            feedDataSourceProvider.overrideWithValue(
+              _FakeFeedDataSource(mockFeedItems),
+            ),
+          ],
+        );
+        addTearDown(container.dispose);
+        final coordinator = container.read(feedPlaybackCoordinatorProvider);
+
+        await container.read(feedViewModelProvider.notifier).loadInitial();
+        await coordinator.handleFeedCurrentChanged(13);
+        await _settleMicrotasks();
+        expect(
+          container.read(playerControllerProvider.notifier).preloadVideoId,
+          'video_010',
+        );
+
+        await coordinator.handleFeedCurrentChanged(14);
+        await _settlePreload();
+
+        expect(
+          container.read(playerControllerProvider.notifier).preloadVideoId,
+          'video_009',
+        );
+        expect(
+          container
+              .read(playerControllerProvider.notifier)
+              .hasPreloadController,
+          isTrue,
+        );
+      },
+    );
+
+    test(
+      'unknown direction does not fallback to previous video when no later video exists',
+      () async {
+        final container = ProviderContainer.test(
+          overrides: [
+            feedDataSourceProvider.overrideWithValue(
+              _FakeFeedDataSource(mockFeedItems),
+            ),
+          ],
+        );
+        addTearDown(container.dispose);
+        final coordinator = container.read(feedPlaybackCoordinatorProvider);
+
+        await container.read(feedViewModelProvider.notifier).loadInitial();
+        await coordinator.handleFeedCurrentChanged(14);
+        await _settleMicrotasks();
+
+        final state = container.read(playerControllerProvider);
+        final controller = container.read(playerControllerProvider.notifier);
+        expect(state.videoId, 'video_010');
+        expect(controller.preloadVideoId, isNull);
+        expect(controller.hasPreloadController, isFalse);
+      },
+    );
+
+    test('backward direction selects previous video candidate', () async {
       final container = ProviderContainer.test(
         overrides: [
           feedDataSourceProvider.overrideWithValue(
@@ -267,25 +329,199 @@ void main() {
       final coordinator = container.read(feedPlaybackCoordinatorProvider);
 
       await container.read(feedViewModelProvider.notifier).loadInitial();
-      await coordinator.handleFeedCurrentChanged(13);
-      await _settleMicrotasks();
+      await coordinator.handleFeedCurrentChanged(3);
+      await _settlePreload();
+
+      await coordinator.handleFeedCurrentChanged(2);
+      await _settlePreload();
+
       expect(
         container.read(playerControllerProvider.notifier).preloadVideoId,
-        'video_010',
+        'video_001',
       );
+    });
 
-      await coordinator.handleFeedCurrentChanged(14);
+    test(
+      'backward direction falls back to next video when no previous video exists',
+      () async {
+        final container = ProviderContainer.test(
+          overrides: [
+            feedDataSourceProvider.overrideWithValue(
+              _FakeFeedDataSource(mockFeedItems),
+            ),
+          ],
+        );
+        addTearDown(container.dispose);
+        final coordinator = container.read(feedPlaybackCoordinatorProvider);
+
+        await container.read(feedViewModelProvider.notifier).loadInitial();
+        await coordinator.handleFeedCurrentChanged(1);
+        await _settlePreload();
+
+        await coordinator.handleFeedCurrentChanged(0);
+        await _settlePreload();
+
+        expect(
+          container.read(playerControllerProvider.notifier).preloadVideoId,
+          'video_002',
+        );
+      },
+    );
+
+    test('out of range index does not throw', () async {
+      final container = ProviderContainer.test(
+        overrides: [
+          feedDataSourceProvider.overrideWithValue(
+            _FakeFeedDataSource(mockFeedItems),
+          ),
+        ],
+      );
+      addTearDown(container.dispose);
+      final coordinator = container.read(feedPlaybackCoordinatorProvider);
+
+      await container.read(feedViewModelProvider.notifier).loadInitial();
+
+      await expectLater(coordinator.handleFeedCurrentChanged(99), completes);
       await _settleMicrotasks();
 
       expect(
         container.read(playerControllerProvider.notifier).preloadVideoId,
         isNull,
       );
+    });
+
+    test('feed items reset clears last scroll direction', () async {
+      final dataSource = _FakeFeedDataSource(mockFeedItems);
+      final container = ProviderContainer.test(
+        overrides: [feedDataSourceProvider.overrideWithValue(dataSource)],
+      );
+      addTearDown(container.dispose);
+      final coordinator = container.read(feedPlaybackCoordinatorProvider);
+      final feedViewModel = container.read(feedViewModelProvider.notifier);
+
+      await feedViewModel.loadInitial();
+      await coordinator.handleFeedCurrentChanged(14);
+      await _settleMicrotasks();
+
+      dataSource.pages = [
+        <FeedItem>[
+          mockVideoFeedItems[0],
+          mockFeedItems[1],
+          mockVideoFeedItems[1],
+        ],
+      ];
+      await feedViewModel.loadInitial();
+      feedViewModel.setCurrentIndex(1);
+      await coordinator.handleFeedCurrentChanged(1);
+      await _settlePreload();
+
       expect(
-        container.read(playerControllerProvider.notifier).hasPreloadController,
-        isFalse,
+        container.read(playerControllerProvider.notifier).preloadVideoId,
+        mockVideoFeedItems[1].id,
       );
     });
+
+    test('non-append feed replacement clears last scroll direction', () async {
+      final dataSource = _FakeFeedDataSource(mockFeedItems);
+      final container = ProviderContainer.test(
+        overrides: [feedDataSourceProvider.overrideWithValue(dataSource)],
+      );
+      addTearDown(container.dispose);
+      final coordinator = container.read(feedPlaybackCoordinatorProvider);
+      final feedViewModel = container.read(feedViewModelProvider.notifier);
+
+      await feedViewModel.loadInitial();
+      await coordinator.handleFeedCurrentChanged(14);
+      await _settleMicrotasks();
+
+      dataSource.pages = [
+        <FeedItem>[
+          mockVideoFeedItems[1],
+          mockFeedItems[1],
+          mockVideoFeedItems[2],
+        ],
+      ];
+      await feedViewModel.loadInitial();
+      await coordinator.handleFeedCurrentChanged(0);
+      await _settlePreload();
+
+      expect(
+        container.read(playerControllerProvider.notifier).preloadVideoId,
+        mockVideoFeedItems[2].id,
+      );
+    });
+
+    test(
+      'feed pagination append does not clear last scroll direction',
+      () async {
+        final dataSource = _FakeFeedDataSource.pages([
+          mockFeedItems.take(4).toList(),
+          mockFeedItems.skip(4).take(4).toList(),
+        ]);
+        final container = ProviderContainer.test(
+          overrides: [feedDataSourceProvider.overrideWithValue(dataSource)],
+        );
+        addTearDown(container.dispose);
+        final coordinator = container.read(feedPlaybackCoordinatorProvider);
+        final feedViewModel = container.read(feedViewModelProvider.notifier);
+
+        await feedViewModel.loadInitial();
+        await coordinator.handleFeedCurrentChanged(3);
+        await _settlePreload();
+
+        await coordinator.handleFeedCurrentChanged(2);
+        await _settlePreload();
+        expect(
+          container.read(playerControllerProvider.notifier).preloadVideoId,
+          'video_001',
+        );
+
+        await feedViewModel.loadMore();
+        feedViewModel.setCurrentIndex(1);
+        await coordinator.handleFeedCurrentChanged(1);
+        await _settlePreload();
+
+        expect(
+          container.read(playerControllerProvider.notifier).preloadVideoId,
+          'video_001',
+        );
+      },
+    );
+
+    test(
+      'no direction-aware candidate clears preload without clearing active video state',
+      () async {
+        final dataSource = _FakeFeedDataSource(mockFeedItems);
+        final container = ProviderContainer.test(
+          overrides: [feedDataSourceProvider.overrideWithValue(dataSource)],
+        );
+        addTearDown(container.dispose);
+        final coordinator = container.read(feedPlaybackCoordinatorProvider);
+        final feedViewModel = container.read(feedViewModelProvider.notifier);
+
+        await feedViewModel.loadInitial();
+        await coordinator.handleFeedCurrentChanged(0);
+        await _settlePreload();
+
+        dataSource.pages = [
+          <FeedItem>[
+            mockVideoFeedItems[0],
+            mockFeedItems[1],
+            mockVideoFeedItems[1],
+          ],
+        ];
+        await feedViewModel.loadInitial();
+        feedViewModel.setCurrentIndex(2);
+        await coordinator.handleFeedCurrentChanged(2);
+        await _settleMicrotasks();
+
+        final state = container.read(playerControllerProvider);
+        final controller = container.read(playerControllerProvider.notifier);
+        expect(state.videoId, mockVideoFeedItems[1].id);
+        expect(state.wantsToPlay, isTrue);
+        expect(controller.preloadVideoId, isNull);
+      },
+    );
 
     test(
       'slow preload initialization does not block current feed change',
@@ -453,16 +689,18 @@ void main() {
 }
 
 class _FakeFeedDataSource implements FeedDataSource {
-  _FakeFeedDataSource(this.items);
+  _FakeFeedDataSource(List<FeedItem> items) : pages = [items];
 
-  final List<FeedItem> items;
+  _FakeFeedDataSource.pages(this.pages);
+
+  List<List<FeedItem>> pages;
 
   @override
   Future<List<FeedItem>> fetchFeedItems({
     required int page,
     required int pageSize,
   }) async {
-    return page == 1 ? items : <FeedItem>[];
+    return pages.elementAtOrNull(page - 1) ?? const <FeedItem>[];
   }
 }
 
