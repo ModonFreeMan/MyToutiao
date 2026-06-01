@@ -212,6 +212,47 @@ void main() {
       expect(json['initialize_ms'], {'p50': null, 'p90': null, 'p95': null});
     });
 
+    test('report json contains stage 12.9 required fields', () {
+      final session = metrics.markFeedItemVisible(
+        videoId: 'video_001',
+        feedIndex: 0,
+      );
+      metrics.markPreloadHit(session);
+      metrics.markPreloadPromotedToActive(session);
+
+      final json = metrics.buildReport().toJson();
+
+      expect(
+        json.keys,
+        containsAll(<String>[
+          'report_at',
+          'buffering_window_ms',
+          'metric_semantics',
+          'preload_enabled',
+          'preload_visible_items',
+          'preload_hits',
+          'preload_misses',
+          'preload_promoted_to_active',
+          'preload_hit_rate',
+          'preload_hit_rate_label',
+          'visible_items',
+          'valid_first_frame_samples',
+          'valid_startup_samples',
+          'valid_initialize_samples',
+          'expired_sessions',
+          'incomplete_sessions',
+          'initialize_failed_sessions',
+          'ignored_late_events',
+          'first_frame_ms',
+          'startup_ms',
+          'initialize_ms',
+          'startup_buffering_count',
+          'startup_buffering_total_ms',
+          'play_request_sources',
+        ]),
+      );
+    });
+
     test('invalid refs and repeated closes never throw', () {
       const invalid = PlaybackStartupSessionRef(
         sessionId: 99,
