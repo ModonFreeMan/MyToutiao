@@ -231,6 +231,137 @@ void main() {
       },
     );
 
+    test(
+      'rapid current changes only schedule latest preload after delay',
+      () async {
+        final container = ProviderContainer.test(
+          overrides: [
+            feedDataSourceProvider.overrideWithValue(
+              _FakeFeedDataSource(mockVideoFeedItems.take(4).toList()),
+            ),
+          ],
+        );
+        addTearDown(container.dispose);
+        final coordinator = container.read(feedPlaybackCoordinatorProvider);
+
+        await container.read(feedViewModelProvider.notifier).loadInitial();
+        await coordinator.handleFeedCurrentChanged(0);
+        await _settleMicrotasks();
+
+        expect(fakePlatform.createdUris, hasLength(1));
+
+        await coordinator.handleFeedCurrentChanged(1);
+        await _settleMicrotasks();
+        await coordinator.handleFeedCurrentChanged(2);
+        await _settleMicrotasks();
+
+        expect(fakePlatform.createdUris, hasLength(3));
+
+        await _passPreloadScheduleDelay();
+
+        final controller = container.read(playerControllerProvider.notifier);
+        expect(controller.preloadVideoId, mockVideoFeedItems[3].id);
+        expect(controller.preloadStatus, PreloadControllerStatus.preloaded);
+        expect(fakePlatform.createdUris, hasLength(4));
+      },
+    );
+
+    test(
+      'candidate null cancels pending preload and disposes preload immediately',
+      () async {
+        final dataSource = _FakeFeedDataSource(
+          mockVideoFeedItems.take(2).toList(),
+        );
+        final container = ProviderContainer.test(
+          overrides: [feedDataSourceProvider.overrideWithValue(dataSource)],
+        );
+        addTearDown(container.dispose);
+        final coordinator = container.read(feedPlaybackCoordinatorProvider);
+        final feedViewModel = container.read(feedViewModelProvider.notifier);
+
+        await feedViewModel.loadInitial();
+        await coordinator.handleFeedCurrentChanged(0);
+        await _settleMicrotasks();
+
+        expect(fakePlatform.createdUris, hasLength(1));
+
+        dataSource.pages = [
+          <FeedItem>[mockVideoFeedItems[2]],
+        ];
+        await feedViewModel.loadInitial();
+        await coordinator.handleFeedCurrentChanged(0);
+        await _settleMicrotasks();
+        await _passPreloadScheduleDelay();
+
+        final controller = container.read(playerControllerProvider.notifier);
+        expect(controller.preloadVideoId, isNull);
+        expect(controller.hasPreloadController, isFalse);
+        expect(fakePlatform.createdUris, hasLength(2));
+      },
+    );
+
+    test(
+      'feed replacement cleanup does not block latest preload debounce registration',
+      () async {
+        final dataSource = _FakeFeedDataSource(
+          mockVideoFeedItems.take(3).toList(),
+        );
+        final container = ProviderContainer.test(
+          overrides: [feedDataSourceProvider.overrideWithValue(dataSource)],
+        );
+        addTearDown(container.dispose);
+        final coordinator = container.read(feedPlaybackCoordinatorProvider);
+        final feedViewModel = container.read(feedViewModelProvider.notifier);
+
+        await feedViewModel.loadInitial();
+        await coordinator.handleFeedCurrentChanged(0);
+        await _settlePreload();
+
+        final controller = container.read(playerControllerProvider.notifier);
+        expect(controller.preloadVideoId, mockVideoFeedItems[1].id);
+
+        dataSource.pages = [
+          <FeedItem>[
+            mockVideoFeedItems[3],
+            mockFeedItems[1],
+            mockVideoFeedItems[4],
+          ],
+        ];
+        await feedViewModel.loadInitial();
+        await coordinator.handleFeedCurrentChanged(0);
+        await _settleMicrotasks();
+
+        expect(controller.preloadVideoId, isNull);
+
+        await _passPreloadScheduleDelay();
+
+        expect(controller.preloadVideoId, mockVideoFeedItems[4].id);
+        expect(controller.preloadStatus, PreloadControllerStatus.preloaded);
+      },
+    );
+
+    test('container dispose cancels pending preload timer', () async {
+      final container = ProviderContainer.test(
+        overrides: [
+          feedDataSourceProvider.overrideWithValue(
+            _FakeFeedDataSource(mockVideoFeedItems.take(2).toList()),
+          ),
+        ],
+      );
+      final coordinator = container.read(feedPlaybackCoordinatorProvider);
+
+      await container.read(feedViewModelProvider.notifier).loadInitial();
+      await coordinator.handleFeedCurrentChanged(0);
+      await _settleMicrotasks();
+
+      expect(fakePlatform.createdUris, hasLength(1));
+
+      container.dispose();
+      await _passPreloadScheduleDelay();
+
+      expect(fakePlatform.createdUris, hasLength(1));
+    });
+
     test('skips non-video items when selecting preload candidate', () async {
       final container = ProviderContainer.test(
         overrides: [
@@ -270,7 +401,7 @@ void main() {
 
         await container.read(feedViewModelProvider.notifier).loadInitial();
         await coordinator.handleFeedCurrentChanged(13);
-        await _settleMicrotasks();
+        await _settlePreload();
         expect(
           container.read(playerControllerProvider.notifier).preloadVideoId,
           'video_010',
@@ -549,7 +680,7 @@ void main() {
 
         fakePlatform.releaseInitializationForCreation(0);
         await currentChangedFuture;
-        await _settleMicrotasks();
+        await _settlePreload();
 
         final state = container.read(playerControllerProvider);
         final controller = container.read(playerControllerProvider.notifier);
@@ -579,12 +710,14 @@ void main() {
         await _passAutoplayGrace();
         fakePlatform.releaseInitializationForCreation(0);
         await firstChangeFuture;
+        await _passPreloadScheduleDelay();
         await _waitForCreatedUris(fakePlatform, 2);
 
         final secondChangeFuture = coordinator.handleFeedCurrentChanged(1);
         await _passAutoplayGrace();
         fakePlatform.releaseInitializationForCreation(2);
         await secondChangeFuture;
+        await _passPreloadScheduleDelay();
         await _waitForCreatedUris(fakePlatform, 4);
 
         final controller = container.read(playerControllerProvider.notifier);
@@ -709,9 +842,15 @@ Future<void> _settleMicrotasks() async {
 }
 
 Future<void> _settlePreload() async {
+  await _passPreloadScheduleDelay();
   for (var i = 0; i < 5; i++) {
     await _settleMicrotasks();
   }
+}
+
+Future<void> _passPreloadScheduleDelay() async {
+  await Future<void>.delayed(const Duration(milliseconds: 150));
+  await _settleMicrotasks();
 }
 
 Future<void> _passAutoplayGrace() async {

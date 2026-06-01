@@ -15,10 +15,13 @@ final feedPlaybackCoordinatorProvider = Provider<FeedPlaybackCoordinator>(
 enum FeedScrollDirection { unknown, forward, backward }
 
 class FeedPlaybackCoordinator {
-  FeedPlaybackCoordinator(this._ref);
+  FeedPlaybackCoordinator(this._ref) {
+    _ref.onDispose(dispose);
+  }
 
   static const Duration _autoplayGracePeriod = Duration(milliseconds: 180);
   static const Duration _autoplaySettleProtection = Duration(seconds: 2);
+  static const Duration _preloadScheduleDelay = Duration(milliseconds: 120);
 
   final Ref _ref;
   bool _shouldResumeWhenFeedVisible = false;
@@ -29,6 +32,9 @@ class FeedPlaybackCoordinator {
   int? _lastCurrentIndex;
   FeedScrollDirection _lastScrollDirection = FeedScrollDirection.unknown;
   List<String> _lastFeedItemIds = const <String>[];
+  Timer? _pendingPreloadTimer;
+  int _preloadScheduleToken = 0;
+  bool _isDisposed = false;
 
   void _resetScrollDirection() {
     _lastCurrentIndex = null;
@@ -37,8 +43,16 @@ class FeedPlaybackCoordinator {
 
   Future<void> handleFeedCurrentChanged(int index) async {
     final token = ++_feedPlaybackToken;
+    var didRequestDisposePreload = false;
     final feedState = _ref.read(feedViewModelProvider);
-    _resetScrollDirectionIfFeedItemsReplaced(feedState.items);
+    final didReplaceFeedItems = _resetScrollDirectionIfFeedItemsReplaced(
+      feedState.items,
+    );
+    if (didReplaceFeedItems) {
+      _cancelPendingPreloadSchedule();
+      unawaited(_ref.read(playerControllerProvider.notifier).disposePreload());
+      didRequestDisposePreload = true;
+    }
     final direction = _updateScrollDirection(index);
     final item = _itemAt(feedState.items, index);
     final preloadCandidate = _preloadCandidate(
@@ -47,6 +61,11 @@ class FeedPlaybackCoordinator {
       direction: direction,
     );
     final playerController = _ref.read(playerControllerProvider.notifier);
+    _cancelPendingPreloadSchedule();
+    if (preloadCandidate == null && !didRequestDisposePreload) {
+      unawaited(playerController.disposePreload());
+      didRequestDisposePreload = true;
+    }
     final startupMetrics = _ref.read(playbackStartupMetricsProvider);
 
     if (item case final VideoFeedItem videoItem) {
@@ -71,7 +90,9 @@ class FeedPlaybackCoordinator {
         _settlingAutoplayExpiresAt = null;
         startupMetrics.markSessionClosed(startupSession);
         await playerController.stopIfCurrent(videoItem.id);
-        await _schedulePreload(preloadCandidate);
+        if (preloadCandidate != null) {
+          _schedulePreload(preloadCandidate);
+        }
         return;
       }
 
@@ -80,14 +101,18 @@ class FeedPlaybackCoordinator {
         videoItem,
         startupSession: startupSession,
       );
-      await _schedulePreload(preloadCandidate);
+      if (preloadCandidate != null) {
+        _schedulePreload(preloadCandidate);
+      }
     } else {
       startupMetrics.closeActiveSession();
       _settlingAutoplayVideoId = null;
       _settlingAutoplayExpiresAt = null;
       _suppressedAutoplayVideoId = null;
       await playerController.stop();
-      await _schedulePreload(preloadCandidate);
+      if (preloadCandidate != null) {
+        _schedulePreload(preloadCandidate);
+      }
     }
   }
 
@@ -229,15 +254,16 @@ class FeedPlaybackCoordinator {
     return items[index];
   }
 
-  void _resetScrollDirectionIfFeedItemsReplaced(List<FeedItem> items) {
+  bool _resetScrollDirectionIfFeedItemsReplaced(List<FeedItem> items) {
     final itemIds = items.map((item) => item.id).toList(growable: false);
     if (_isSameFeedItemPrefix(_lastFeedItemIds, itemIds)) {
       _lastFeedItemIds = itemIds;
-      return;
+      return false;
     }
 
     _lastFeedItemIds = itemIds;
     _resetScrollDirection();
+    return true;
   }
 
   bool _isSameFeedItemPrefix(List<String> previous, List<String> next) {
@@ -318,14 +344,33 @@ class FeedPlaybackCoordinator {
     return null;
   }
 
-  Future<void> _schedulePreload(VideoFeedItem? candidate) async {
-    final playerController = _ref.read(playerControllerProvider.notifier);
-    if (candidate == null) {
-      await playerController.disposePreload();
+  void _schedulePreload(VideoFeedItem candidate) {
+    if (_isDisposed) {
       return;
     }
 
-    unawaited(playerController.preloadVideo(candidate));
+    final playerController = _ref.read(playerControllerProvider.notifier);
+    _cancelPendingPreloadSchedule();
+    final token = _preloadScheduleToken;
+    late final Timer timer;
+    timer = Timer(_preloadScheduleDelay, () {
+      if (identical(_pendingPreloadTimer, timer)) {
+        _pendingPreloadTimer = null;
+      }
+
+      if (_isDisposed || token != _preloadScheduleToken) {
+        return;
+      }
+
+      unawaited(playerController.preloadVideo(candidate));
+    });
+    _pendingPreloadTimer = timer;
+  }
+
+  void _cancelPendingPreloadSchedule() {
+    _preloadScheduleToken++;
+    _pendingPreloadTimer?.cancel();
+    _pendingPreloadTimer = null;
   }
 
   bool _isVisibleCurrentItem(VideoFeedItem item) {
@@ -346,5 +391,10 @@ class FeedPlaybackCoordinator {
     _settlingAutoplayVideoId = null;
     _settlingAutoplayExpiresAt = null;
     return false;
+  }
+
+  void dispose() {
+    _isDisposed = true;
+    _cancelPendingPreloadSchedule();
   }
 }

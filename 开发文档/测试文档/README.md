@@ -8,6 +8,7 @@
 
 - [测试用例说明.md](D:/Flutter/VideoPlayer/开发文档/测试文档/测试用例说明.md:1)：记录每个测试文件的测试内容和通过标准。
 - [12.7 方向感知预加载扩展测试说明.md](D:/Flutter/VideoPlayer/开发文档/测试文档/12.7 方向感知预加载扩展测试说明.md:1)：记录方向感知 preload candidate 的单元测试与回归范围。
+- [12.8 快速滑动预加载节流与释放收敛测试说明.md](D:/Flutter/VideoPlayer/开发文档/测试文档/12.8 快速滑动预加载节流与释放收敛测试说明.md:1)：记录快速滑动 preload debounce、换源清理和回归测试范围。
 
 ## 测试目录结构
 
@@ -71,5 +72,5 @@ flutter test
 
 ```text
 flutter analyze: No issues found
-flutter test: All tests passed, 127/127
+flutter test: All tests passed, 131/131
 ```
