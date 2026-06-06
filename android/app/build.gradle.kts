@@ -25,6 +25,18 @@ android {
         versionName = flutter.versionName
     }
 
+    flavorDimensions += "preload"
+    productFlavors {
+        create("preload") {
+            dimension = "preload"
+            applicationIdSuffix = ".preload"
+        }
+        create("noPreload") {
+            dimension = "preload"
+            applicationIdSuffix = ".nopreload"
+        }
+    }
+
     buildTypes {
         release {
             // TODO: Add your own signing config for the release build.
