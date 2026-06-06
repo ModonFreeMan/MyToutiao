@@ -78,7 +78,7 @@ class _VideoPlayerViewState extends ConsumerState<VideoPlayerView> {
     final size = controller.value.size;
 
     return FittedBox(
-      fit: BoxFit.cover,
+      fit: BoxFit.contain,
       child: SizedBox(
         width: size.width,
         height: size.height,

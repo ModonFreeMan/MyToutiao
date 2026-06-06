@@ -156,7 +156,7 @@ class _FeedImageView extends StatelessWidget {
   Widget build(BuildContext context) {
     return Image.network(
       imageUrl,
-      fit: BoxFit.cover,
+      fit: BoxFit.contain,
       loadingBuilder: (context, child, progress) {
         if (progress == null) {
           return child;
