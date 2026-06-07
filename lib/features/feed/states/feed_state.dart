@@ -9,6 +9,7 @@ class FeedState {
     required this.hasMore,
     required this.currentPage,
     required this.error,
+    required this.pendingFocusedIndex,
   });
 
   const FeedState.initial()
@@ -18,7 +19,8 @@ class FeedState {
       isLoadingMore = false,
       hasMore = true,
       currentPage = 0,
-      error = null;
+      error = null,
+      pendingFocusedIndex = null;
 
   final List<FeedItem> items;
   final int currentIndex;
@@ -27,6 +29,7 @@ class FeedState {
   final bool hasMore;
   final int currentPage;
   final String? error;
+  final int? pendingFocusedIndex;
 
   FeedState copyWith({
     List<FeedItem>? items,
@@ -36,7 +39,9 @@ class FeedState {
     bool? hasMore,
     int? currentPage,
     String? error,
+    int? pendingFocusedIndex,
     bool clearError = false,
+    bool clearPendingFocusedIndex = false,
   }) {
     return FeedState(
       items: items ?? this.items,
@@ -46,6 +51,9 @@ class FeedState {
       hasMore: hasMore ?? this.hasMore,
       currentPage: currentPage ?? this.currentPage,
       error: clearError ? null : error ?? this.error,
+      pendingFocusedIndex: clearPendingFocusedIndex
+          ? null
+          : pendingFocusedIndex ?? this.pendingFocusedIndex,
     );
   }
 }

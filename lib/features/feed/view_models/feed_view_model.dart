@@ -46,6 +46,7 @@ class FeedViewModel extends Notifier<FeedState> {
         hasMore: items.length == _pageSize,
         isLoading: false,
         clearError: true,
+        clearPendingFocusedIndex: true,
       );
     } catch (error) {
       if (!ref.mounted) {
@@ -95,7 +96,15 @@ class FeedViewModel extends Notifier<FeedState> {
       return;
     }
 
-    state = state.copyWith(currentIndex: index);
+    final pendingFocusedIndex = state.pendingFocusedIndex;
+    if (pendingFocusedIndex != null && index != pendingFocusedIndex) {
+      return;
+    }
+
+    state = state.copyWith(
+      currentIndex: index,
+      clearPendingFocusedIndex: index == pendingFocusedIndex,
+    );
 
     if (state.hasMore && index >= state.items.length - 2) {
       Future<void>.microtask(loadMore);
@@ -105,7 +114,13 @@ class FeedViewModel extends Notifier<FeedState> {
   Future<bool> focusItemById(String itemId) async {
     var index = state.items.indexWhere((item) => item.id == itemId);
     if (index != -1) {
-      state = state.copyWith(currentIndex: index, clearError: true);
+      final pendingFocusedIndex = _pendingIndexForFocus(index);
+      state = state.copyWith(
+        currentIndex: index,
+        pendingFocusedIndex: pendingFocusedIndex,
+        clearError: true,
+        clearPendingFocusedIndex: pendingFocusedIndex == null,
+      );
       return true;
     }
 
@@ -117,11 +132,21 @@ class FeedViewModel extends Notifier<FeedState> {
 
       index = state.items.indexWhere((item) => item.id == itemId);
       if (index != -1) {
-        state = state.copyWith(currentIndex: index, clearError: true);
+        final pendingFocusedIndex = _pendingIndexForFocus(index);
+        state = state.copyWith(
+          currentIndex: index,
+          pendingFocusedIndex: pendingFocusedIndex,
+          clearError: true,
+          clearPendingFocusedIndex: pendingFocusedIndex == null,
+        );
         return true;
       }
     }
 
     return false;
+  }
+
+  int? _pendingIndexForFocus(int index) {
+    return index == state.currentIndex ? null : index;
   }
 }

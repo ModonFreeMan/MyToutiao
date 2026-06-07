@@ -113,6 +113,68 @@ void main() {
       expect(state.items[state.currentIndex].id, 'video_005');
     });
 
+    test('focuses distant item across multiple pages', () async {
+      final dataSource = _FakeFeedDataSource([
+        mockFeedItems.take(4).toList(),
+        mockFeedItems.skip(4).take(4).toList(),
+        mockFeedItems.skip(8).take(4).toList(),
+        mockFeedItems.skip(12).take(3).toList(),
+      ]);
+      final container = _createContainer(dataSource);
+      addTearDown(container.dispose);
+
+      await _settleMicrotasks();
+
+      final didFocus = await container
+          .read(feedViewModelProvider.notifier)
+          .focusItemById('video_009');
+
+      final state = container.read(feedViewModelProvider);
+      expect(didFocus, isTrue);
+      expect(state.currentIndex, 12);
+      expect(state.items[state.currentIndex].id, 'video_009');
+      expect(state.pendingFocusedIndex, 12);
+      expect(dataSource.calls, [
+        (page: 1, pageSize: 4),
+        (page: 2, pageSize: 4),
+        (page: 3, pageSize: 4),
+        (page: 4, pageSize: 4),
+      ]);
+    });
+
+    test(
+      'keeps distant focus when an intermediate page change is reported',
+      () async {
+        final dataSource = _FakeFeedDataSource([
+          mockFeedItems.take(4).toList(),
+          mockFeedItems.skip(4).take(4).toList(),
+          mockFeedItems.skip(8).take(4).toList(),
+          mockFeedItems.skip(12).take(3).toList(),
+        ]);
+        final container = _createContainer(dataSource);
+        addTearDown(container.dispose);
+
+        await _settleMicrotasks();
+
+        final viewModel = container.read(feedViewModelProvider.notifier);
+        final didFocus = await viewModel.focusItemById('video_009');
+        expect(didFocus, isTrue);
+
+        viewModel.setCurrentIndex(3);
+
+        final state = container.read(feedViewModelProvider);
+        expect(state.currentIndex, 12);
+        expect(state.items[state.currentIndex].id, 'video_009');
+        expect(state.pendingFocusedIndex, 12);
+
+        viewModel.setCurrentIndex(12);
+
+        final settledState = container.read(feedViewModelProvider);
+        expect(settledState.currentIndex, 12);
+        expect(settledState.pendingFocusedIndex, isNull);
+      },
+    );
+
     test('returns false when focus target cannot be loaded', () async {
       final dataSource = _FakeFeedDataSource([
         mockFeedItems.take(4).toList(),

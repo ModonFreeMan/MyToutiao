@@ -29,6 +29,7 @@ class _FeedPageState extends ConsumerState<FeedPage> {
   late final PageController _pageController;
   int? _pointer;
   Offset? _downPosition;
+  int _pageSyncToken = 0;
 
   @override
   void initState() {
@@ -48,8 +49,12 @@ class _FeedPageState extends ConsumerState<FeedPage> {
     final feedViewModel = ref.read(feedViewModelProvider.notifier);
 
     ref.listen(feedViewModelProvider, (previous, next) {
-      if (previous?.currentIndex != next.currentIndex) {
-        _syncPageControllerToIndex(next.currentIndex);
+      if (previous?.currentIndex != next.currentIndex ||
+          previous?.pendingFocusedIndex != next.pendingFocusedIndex) {
+        _syncPageControllerToIndex(
+          next.currentIndex,
+          jumpToTarget: next.pendingFocusedIndex != null,
+        );
       }
 
       if (_isSameCurrentItem(previous, next)) {
@@ -94,7 +99,10 @@ class _FeedPageState extends ConsumerState<FeedPage> {
             );
           }
 
-          _syncPageControllerToIndex(feedState.currentIndex);
+          _syncPageControllerToIndex(
+            feedState.currentIndex,
+            jumpToTarget: feedState.pendingFocusedIndex != null,
+          );
 
           return Stack(
             children: [
@@ -167,14 +175,21 @@ class _FeedPageState extends ConsumerState<FeedPage> {
     );
   }
 
-  void _syncPageControllerToIndex(int index) {
+  void _syncPageControllerToIndex(int index, {required bool jumpToTarget}) {
+    final token = ++_pageSyncToken;
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!mounted || !_pageController.hasClients) {
+      if (!mounted || token != _pageSyncToken || !_pageController.hasClients) {
         return;
       }
 
-      final page = _pageController.page?.round();
-      if (page == index) {
+      final currentPage =
+          _pageController.page ?? _pageController.initialPage.toDouble();
+      if (currentPage.round() == index) {
+        return;
+      }
+
+      if (jumpToTarget) {
+        _pageController.jumpToPage(index);
         return;
       }
 
