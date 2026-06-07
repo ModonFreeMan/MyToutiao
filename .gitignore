@@ -55,3 +55,6 @@ app.*.map.json
 /video_sources/**/*.m4s
 /video_sources/**/*.aac
 /video_sources/**/*.vtt
+
+# Local search/AI credentials.
+/config/search_offline_config.json

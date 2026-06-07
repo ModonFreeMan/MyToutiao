@@ -1,0 +1,10 @@
+{
+  "apiBaseUrl": "https://api.bianxieai.com",
+  "embeddingEndpoint": "https://api.bianxieai.com/v1/embeddings",
+  "apiKey": "replace-with-your-api-key",
+  "embeddingModel": "text-embedding-3-small",
+  "milvusHost": "192.168.1.13",
+  "milvusPort": 19530,
+  "milvusCollectionName": "video_summary_search_flat",
+  "businessStorePath": "build/search/video_documents.json"
+}

@@ -102,7 +102,7 @@ final mockVideoFeedItems = <VideoFeedItem>[
     coverUrl:
         'https://images.unsplash.com/photo-1546519638-68e109498ffc?w=1200',
     duration: const Duration(milliseconds: 52209),
-    description: '从节奏、重心和护球三个动作拆解变向运球，新手也能跟练。',
+    description: '从节奏、重心和护球三个动作拆解变向运球，演示原地换手、交叉步突破和防守压力下的控球细节，新手可以跟着分段练习。',
   ),
   VideoFeedItem(
     id: 'video_002',
@@ -129,7 +129,7 @@ final mockVideoFeedItems = <VideoFeedItem>[
     coverUrl:
         'https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?w=1200',
     duration: const Duration(milliseconds: 46613),
-    description: '一条适合半天完成的城市骑行路线，沿途包含公园、咖啡店和河岸步道。',
+    description: '一条适合半天完成的城市骑行路线，沿途串联公园、咖啡店和河岸步道，并补充停车点、补给点和适合拍照休息的路段。',
   ),
   VideoFeedItem(
     id: 'video_003',
@@ -156,7 +156,7 @@ final mockVideoFeedItems = <VideoFeedItem>[
     coverUrl:
         'https://images.unsplash.com/photo-1544025162-d76694265947?w=1200',
     duration: const Duration(milliseconds: 300140),
-    description: '先炒番茄再慢炖，汤汁浓郁，牛腩软烂，适合配米饭。',
+    description: '先炒番茄再慢炖，讲清楚牛腩焯水、香料搭配和收汁时机，让汤汁更浓郁、牛腩更软烂，适合配米饭做晚餐。',
   ),
   VideoFeedItem(
     id: 'video_004',
@@ -183,7 +183,7 @@ final mockVideoFeedItems = <VideoFeedItem>[
     coverUrl:
         'https://images.unsplash.com/photo-1518611012118-696072aa579a?w=1200',
     duration: const Duration(milliseconds: 46613),
-    description: '无需器械的晨间拉伸组合，重点放松肩颈、背部和腿后侧。',
+    description: '无需器械的晨间拉伸组合，包含肩颈打开、脊柱延展、髋部活动和腿后侧放松，适合久坐人群在起床后唤醒身体。',
   ),
   VideoFeedItem(
     id: 'video_005',
@@ -210,7 +210,7 @@ final mockVideoFeedItems = <VideoFeedItem>[
     coverUrl:
         'https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?w=1200',
     duration: const Duration(milliseconds: 46613),
-    description: '从水温、研磨度和注水节奏入手，帮你减少手冲咖啡的苦涩和杂味。',
+    description: '从水温、研磨度和注水节奏入手，演示 V60 手冲的预浸、分段注水和萃取时间控制，帮你减少苦涩和杂味。',
   ),
   VideoFeedItem(
     id: 'video_006',
@@ -237,7 +237,7 @@ final mockVideoFeedItems = <VideoFeedItem>[
     coverUrl:
         'https://images.unsplash.com/photo-1497366811353-6870744d04b2?w=1200',
     duration: const Duration(milliseconds: 52209),
-    description: '用分区、走线和常用物优先原则，改造一张拥挤的工作桌。',
+    description: '用分区、走线和常用物优先原则，改造一张拥挤的工作桌，包含显示器、键盘、文具和充电线的收纳思路。',
   ),
   VideoFeedItem(
     id: 'video_007',
@@ -264,7 +264,7 @@ final mockVideoFeedItems = <VideoFeedItem>[
     coverUrl:
         'https://images.unsplash.com/photo-1492684223066-81342ee5ff30?w=1200',
     duration: const Duration(milliseconds: 52209),
-    description: '利用街灯方向、反光墙面和曝光补偿，拍出更干净的夜景人像。',
+    description: '利用街灯方向、反光墙面和曝光补偿，讲解夜景人像的站位、构图和手机参数设置，帮助画面更干净、肤色更自然。',
   ),
   VideoFeedItem(
     id: 'video_008',
@@ -291,7 +291,7 @@ final mockVideoFeedItems = <VideoFeedItem>[
     coverUrl:
         'https://images.unsplash.com/photo-1520045892732-304bc3ac5d8e?w=1200',
     duration: const Duration(milliseconds: 46613),
-    description: '先学会稳定站姿、上板和基础刹停，再进入转弯与小坡练习。',
+    description: '先学会稳定站姿、上板和基础刹停，逐步讲解重心转移、脚位摆放和安全摔倒方式，再进入转弯与小坡练习。',
   ),
   VideoFeedItem(
     id: 'video_009',
@@ -318,7 +318,7 @@ final mockVideoFeedItems = <VideoFeedItem>[
     coverUrl:
         'https://images.unsplash.com/photo-1500534314209-a25ddb2bd429?w=1200',
     duration: const Duration(milliseconds: 46613),
-    description: '从北山街出发串联小众湖岸、茶园和观景点，适合轻装一日徒步。',
+    description: '从北山街出发串联小众湖岸、茶园和观景点，避开热门拥挤打卡点，并提示饮水、午餐和返程交通安排。',
   ),
   VideoFeedItem(
     id: 'video_010',
@@ -345,6 +345,7 @@ final mockVideoFeedItems = <VideoFeedItem>[
     coverUrl:
         'https://images.unsplash.com/photo-1515879218367-8466d910aaa4?w=1200',
     duration: const Duration(milliseconds: 300140),
-    description: '用 AnimatedScale、AnimatedOpacity 和曲线控制，让按钮按压反馈更轻盈。',
+    description:
+        '用 AnimatedScale、AnimatedOpacity 和曲线控制实现按钮微交互，拆解按压、释放和禁用状态，让反馈更轻盈自然。',
   ),
 ];
