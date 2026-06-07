@@ -11,42 +11,47 @@ import 'package:video_player_mvp/data/search_index/video_summary_generator.dart'
 
 void main() {
   group('VideoSearchOfflineIndexer', () {
-    test('writes fixed summary and keywords to business store', () async {
-      final tempDir = await Directory.systemTemp.createTemp(
-        'search_index_test_',
-      );
-      addTearDown(() => tempDir.delete(recursive: true));
-      final vectorStore = _RecordingVectorStore();
-      final indexer = VideoSearchOfflineIndexer(
-        summaryGenerator: const FixedVideoSummaryGenerator(),
-        embeddingService: const DeterministicSearchEmbeddingService(),
-        businessStore: JsonSearchBusinessStore(
+    test(
+      'writes local content summary and keywords to business store',
+      () async {
+        final tempDir = await Directory.systemTemp.createTemp(
+          'search_index_test_',
+        );
+        addTearDown(() => tempDir.delete(recursive: true));
+        final vectorStore = _RecordingVectorStore();
+        final indexer = VideoSearchOfflineIndexer(
+          summaryGenerator: const LocalVideoSummaryGenerator(),
+          embeddingService: const DeterministicSearchEmbeddingService(),
+          businessStore: JsonSearchBusinessStore(
+            file: File('${tempDir.path}/videos.json'),
+          ),
+          vectorStore: vectorStore,
+        );
+
+        await indexer.index(
+          const OfflineVideoInput(
+            videoId: 'video_001',
+            title: 'Flutter 横屏播放器切换',
+            description: '介绍横屏播放和清晰度切换。',
+            tags: ['Flutter', '播放器', '横屏播放'],
+            recommendationWords: ['Flutter 视频播放器', '清晰度切换'],
+          ),
+        );
+
+        final saved = await JsonSearchBusinessStore(
           file: File('${tempDir.path}/videos.json'),
-        ),
-        vectorStore: vectorStore,
-      );
+        ).findByVideoId('video_001');
 
-      await indexer.index(
-        const OfflineVideoInput(
-          videoId: 'video_001',
-          title: 'Flutter 横屏播放器切换',
-          description: '介绍横屏播放和清晰度切换。',
-          tags: ['Flutter', '播放器', '横屏播放'],
-          recommendationWords: ['Flutter 视频播放器', '清晰度切换'],
-        ),
-      );
-
-      final saved = await JsonSearchBusinessStore(
-        file: File('${tempDir.path}/videos.json'),
-      ).findByVideoId('video_001');
-
-      expect(saved, isNotNull);
-      expect(saved!.summary, '这个视频主要介绍 Flutter 视频播放器的横屏播放和清晰度切换。');
-      expect(saved.keywords.length, greaterThanOrEqualTo(5));
-      expect(saved.keywords, containsAll(['Flutter 视频播放器', '清晰度切换', '横屏播放']));
-      expect(vectorStore.videoId, 'video_001');
-      expect(vectorStore.summaryEmbedding, hasLength(32));
-    });
+        expect(saved, isNotNull);
+        expect(saved!.summary, contains('标题：Flutter 横屏播放器切换'));
+        expect(saved.summary, contains('简介：介绍横屏播放和清晰度切换。'));
+        expect(saved.summary, contains('标签：Flutter、播放器、横屏播放'));
+        expect(saved.keywords.length, greaterThanOrEqualTo(5));
+        expect(saved.keywords, containsAll(['Flutter 视频播放器', '清晰度切换', '横屏播放']));
+        expect(vectorStore.videoId, 'video_001');
+        expect(vectorStore.summaryEmbedding, hasLength(32));
+      },
+    );
 
     test('upserts business document when indexing same video twice', () async {
       final tempDir = await Directory.systemTemp.createTemp(
@@ -57,7 +62,7 @@ void main() {
         file: File('${tempDir.path}/videos.json'),
       );
       final indexer = VideoSearchOfflineIndexer(
-        summaryGenerator: const FixedVideoSummaryGenerator(),
+        summaryGenerator: const LocalVideoSummaryGenerator(),
         embeddingService: const DeterministicSearchEmbeddingService(),
         businessStore: businessStore,
         vectorStore: _RecordingVectorStore(),
@@ -87,6 +92,24 @@ void main() {
       expect(saved!.title, '新标题');
       expect(saved.keywords, contains('新推荐词'));
       expect(saved.keywords, isNot(contains('旧推荐词')));
+      expect(saved.summary, contains('标题：新标题'));
+    });
+  });
+
+  group('FixedVideoSummaryGenerator', () {
+    test('keeps fixed summary for compatibility', () async {
+      final generated = await const FixedVideoSummaryGenerator().generate(
+        const OfflineVideoInput(
+          videoId: 'video_001',
+          title: 'Flutter 横屏播放器切换',
+          description: '介绍横屏播放和清晰度切换。',
+          tags: ['Flutter', '播放器', '横屏播放'],
+          recommendationWords: ['Flutter 视频播放器', '清晰度切换'],
+        ),
+      );
+
+      expect(generated.summary, '这个视频主要介绍 Flutter 视频播放器的横屏播放和清晰度切换。');
+      expect(generated.keywords, contains('Flutter 视频播放器'));
     });
   });
 
@@ -150,6 +173,14 @@ void main() {
 class _RecordingVectorStore implements SearchVectorStore {
   String? videoId;
   List<double>? summaryEmbedding;
+
+  @override
+  Future<List<SearchVectorResult>> searchSummaryEmbedding({
+    required List<double> queryEmbedding,
+    int limit = 10,
+  }) async {
+    return const <SearchVectorResult>[];
+  }
 
   @override
   Future<void> upsertSummaryEmbedding({

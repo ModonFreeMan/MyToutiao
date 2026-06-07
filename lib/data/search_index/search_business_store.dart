@@ -7,6 +7,8 @@ abstract interface class SearchBusinessStore {
   Future<void> upsert(SearchVideoDocument document);
 
   Future<SearchVideoDocument?> findByVideoId(String videoId);
+
+  Future<List<SearchVideoDocument>> findAll();
 }
 
 class JsonSearchBusinessStore implements SearchBusinessStore {
@@ -43,6 +45,11 @@ class JsonSearchBusinessStore implements SearchBusinessStore {
     }
 
     return null;
+  }
+
+  @override
+  Future<List<SearchVideoDocument>> findAll() {
+    return _readAll();
   }
 
   Future<List<SearchVideoDocument>> _readAll() async {

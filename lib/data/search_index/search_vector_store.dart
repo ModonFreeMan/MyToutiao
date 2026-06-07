@@ -1,10 +1,22 @@
 import 'dart:convert';
 import 'dart:io';
 
+class SearchVectorResult {
+  const SearchVectorResult({required this.videoId, required this.score});
+
+  final String videoId;
+  final double score;
+}
+
 abstract interface class SearchVectorStore {
   Future<void> upsertSummaryEmbedding({
     required String videoId,
     required List<double> summaryEmbedding,
+  });
+
+  Future<List<SearchVectorResult>> searchSummaryEmbedding({
+    required List<double> queryEmbedding,
+    int limit = 10,
   });
 }
 
@@ -43,6 +55,32 @@ class MilvusSearchVectorStore implements SearchVectorStore {
         {primaryFieldName: videoId, vectorFieldName: summaryEmbedding},
       ],
     });
+  }
+
+  @override
+  Future<List<SearchVectorResult>> searchSummaryEmbedding({
+    required List<double> queryEmbedding,
+    int limit = 10,
+  }) async {
+    final response = await _post('/v2/vectordb/entities/search', {
+      'collectionName': collectionName,
+      'data': [queryEmbedding],
+      'annsField': vectorFieldName,
+      'limit': limit,
+      'outputFields': [primaryFieldName],
+    });
+
+    final data = response['data'];
+    if (data is! List<Object?>) {
+      throw const FormatException(
+        'Milvus search response data must be a list.',
+      );
+    }
+
+    return data
+        .map((item) => _searchResultFromJson(item))
+        .whereType<SearchVectorResult>()
+        .toList(growable: false);
   }
 
   Future<void> _ensureCollection({required int dimension}) async {
@@ -112,5 +150,49 @@ class MilvusSearchVectorStore implements SearchVectorStore {
     }
 
     return decoded;
+  }
+
+  SearchVectorResult? _searchResultFromJson(Object? value) {
+    if (value is! Map<String, Object?>) {
+      return null;
+    }
+
+    final videoId = _readVideoId(value);
+    if (videoId == null || videoId.isEmpty) {
+      return null;
+    }
+
+    return SearchVectorResult(videoId: videoId, score: _readScore(value));
+  }
+
+  String? _readVideoId(Map<String, Object?> item) {
+    final directValue = item[primaryFieldName];
+    if (directValue is String) {
+      return directValue;
+    }
+
+    final idValue = item['id'];
+    if (idValue is String) {
+      return idValue;
+    }
+
+    final entity = item['entity'];
+    if (entity is Map<String, Object?>) {
+      final entityVideoId = entity[primaryFieldName];
+      if (entityVideoId is String) {
+        return entityVideoId;
+      }
+    }
+
+    return null;
+  }
+
+  double _readScore(Map<String, Object?> item) {
+    final scoreValue = item['score'] ?? item['distance'];
+    if (scoreValue is num) {
+      return scoreValue.toDouble();
+    }
+
+    return 0;
   }
 }

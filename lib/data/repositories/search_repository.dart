@@ -1,11 +1,11 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../datasources/dense_search_datasource.dart';
 import '../datasources/search_data_source.dart';
-import '../datasources/mock_search_datasource.dart';
 import '../models/video_feed_item.dart';
 
 final searchDataSourceProvider = Provider<SearchDataSource>((ref) {
-  return const MockSearchDataSource();
+  return DenseSearchDataSource.localConfig();
 });
 
 final searchRepositoryProvider = Provider<SearchRepository>((ref) {

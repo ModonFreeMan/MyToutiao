@@ -26,7 +26,7 @@ Future<void> main(List<String> args) async {
   final limit = int.parse(_argValue(args, '--limit') ?? '3');
 
   final indexer = VideoSearchOfflineIndexer(
-    summaryGenerator: const FixedVideoSummaryGenerator(),
+    summaryGenerator: const LocalVideoSummaryGenerator(),
     embeddingService: OpenAICompatibleSearchEmbeddingService(
       apiKey: config.apiKey,
       endpoint: config.embeddingEndpoint,
