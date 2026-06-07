@@ -3,15 +3,48 @@ import '../data/models/statistics.dart';
 import '../data/models/video_feed_item.dart';
 import '../data/models/video_source.dart';
 
-const _sintelTrailerUrl = 'https://media.w3.org/2010/05/sintel/trailer.mp4';
 const _w3cMovie300Url = 'https://media.w3.org/2010/05/video/movie_300.mp4';
-const _oceansUrl = 'https://vjs.zencdn.net/v/oceans.mp4';
 const _flutterBeeUrl =
     'https://flutter.github.io/assets-for-api-docs/assets/videos/bee.mp4';
 const _flutterBeeHlsUrl =
     'https://flutter.github.io/assets-for-api-docs/assets/videos/hls/bee.m3u8';
-const _flutterButterflyUrl =
-    'https://flutter.github.io/assets-for-api-docs/assets/videos/butterfly.mp4';
+
+const _localVideoHost = 'http://192.168.1.13:8080/video_sources';
+const _localBigBuckBunny360Url =
+    '$_localVideoHost/big-buck-bunny/360p/index.m3u8';
+const _localBigBuckBunny720Url =
+    '$_localVideoHost/big-buck-bunny/720p/index.m3u8';
+const _localBigBuckBunny1080Url =
+    '$_localVideoHost/big-buck-bunny/1080p/index.m3u8';
+const _localSintel360Url = '$_localVideoHost/sintel/360p/index.m3u8';
+const _localSintel720Url = '$_localVideoHost/sintel/720p/index.m3u8';
+const _localSintel1080Url = '$_localVideoHost/sintel/1080p/index.m3u8';
+const _localMux360Url = '$_localVideoHost/mux-test-stream/360p/index.m3u8';
+const _localMux720Url = '$_localVideoHost/mux-test-stream/720p/index.m3u8';
+const _localMux1080Url = '$_localVideoHost/mux-test-stream/1080p/index.m3u8';
+const _localMuxArteChina360Url =
+    '$_localVideoHost/mux-arte-china/360p/index.m3u8';
+const _localMuxArteChina720Url =
+    '$_localVideoHost/mux-arte-china/720p/index.m3u8';
+const _localMuxArteChina1080Url =
+    '$_localVideoHost/mux-arte-china/1080p/index.m3u8';
+const _localAppleBipBop360Url = '$_localVideoHost/apple-bipbop/360p/index.m3u8';
+const _localAppleBipBop720Url = '$_localVideoHost/apple-bipbop/720p/index.m3u8';
+const _localAppleBipBop1080Url =
+    '$_localVideoHost/apple-bipbop/1080p/index.m3u8';
+const _localTears360Url = '$_localVideoHost/tears-of-steel/360p/index.m3u8';
+const _localTears720Url = '$_localVideoHost/tears-of-steel/720p/index.m3u8';
+const _localTears1080Url = '$_localVideoHost/tears-of-steel/1080p/index.m3u8';
+const _localEyevinnVinn360Url = '$_localVideoHost/eyevinn-vinn/360p/index.m3u8';
+const _localEyevinnVinn720Url = '$_localVideoHost/eyevinn-vinn/720p/index.m3u8';
+const _localEyevinnVinn1080Url =
+    '$_localVideoHost/eyevinn-vinn/1080p/index.m3u8';
+const _localEyevinnTears360Url =
+    '$_localVideoHost/eyevinn-tears-of-steel-4k/360p/index.m3u8';
+const _localEyevinnTears720Url =
+    '$_localVideoHost/eyevinn-tears-of-steel-4k/720p/index.m3u8';
+const _localEyevinnTears1080Url =
+    '$_localVideoHost/eyevinn-tears-of-steel-4k/1080p/index.m3u8';
 
 List<VideoSource> _sourcesFor({
   required String p360Url,
@@ -62,9 +95,9 @@ final mockVideoFeedItems = <VideoFeedItem>[
     recommendationWords: const ['篮球运球教学', '变向运球', '篮球新手训练', '篮球控球技巧'],
     createdAt: DateTime(2026, 5, 20, 18, 30),
     videoSources: _sourcesFor(
-      p360Url: _sintelTrailerUrl,
-      p720Url: _flutterBeeUrl,
-      p1080Url: _flutterButterflyUrl,
+      p360Url: _localBigBuckBunny360Url,
+      p720Url: _localBigBuckBunny720Url,
+      p1080Url: _localBigBuckBunny1080Url,
     ),
     coverUrl:
         'https://images.unsplash.com/photo-1546519638-68e109498ffc?w=1200',
@@ -89,9 +122,9 @@ final mockVideoFeedItems = <VideoFeedItem>[
     recommendationWords: const ['城市骑行路线', '周末去哪玩', '骑行装备', '短途旅行'],
     createdAt: DateTime(2026, 5, 21, 9, 10),
     videoSources: _sourcesFor(
-      p360Url: _oceansUrl,
-      p720Url: _flutterBeeHlsUrl,
-      p1080Url: _w3cMovie300Url,
+      p360Url: _localSintel360Url,
+      p720Url: _localSintel720Url,
+      p1080Url: _localSintel1080Url,
     ),
     coverUrl:
         'https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?w=1200',
@@ -116,9 +149,9 @@ final mockVideoFeedItems = <VideoFeedItem>[
     recommendationWords: const ['番茄牛腩做法', '家常菜教程', '牛肉怎么炖', '晚餐菜谱'],
     createdAt: DateTime(2026, 5, 21, 20, 45),
     videoSources: _sourcesFor(
-      p360Url: _w3cMovie300Url,
-      p720Url: _sintelTrailerUrl,
-      p1080Url: _flutterBeeUrl,
+      p360Url: _localMux360Url,
+      p720Url: _localMux720Url,
+      p1080Url: _localMux1080Url,
     ),
     coverUrl:
         'https://images.unsplash.com/photo-1544025162-d76694265947?w=1200',
@@ -143,9 +176,9 @@ final mockVideoFeedItems = <VideoFeedItem>[
     recommendationWords: const ['晨间拉伸', '居家健身', '肩颈放松', '新手健身计划'],
     createdAt: DateTime(2026, 5, 22, 7, 20),
     videoSources: _sourcesFor(
-      p360Url: _flutterButterflyUrl,
-      p720Url: _oceansUrl,
-      p1080Url: _flutterBeeHlsUrl,
+      p360Url: _localTears360Url,
+      p720Url: _localTears720Url,
+      p1080Url: _localTears1080Url,
     ),
     coverUrl:
         'https://images.unsplash.com/photo-1518611012118-696072aa579a?w=1200',
@@ -170,9 +203,9 @@ final mockVideoFeedItems = <VideoFeedItem>[
     recommendationWords: const ['手冲咖啡教程', '咖啡豆研磨度', 'V60 萃取', '居家咖啡'],
     createdAt: DateTime(2026, 5, 22, 10, 30),
     videoSources: _sourcesFor(
-      p360Url: _flutterBeeUrl,
-      p720Url: _oceansUrl,
-      p1080Url: _sintelTrailerUrl,
+      p360Url: _localEyevinnVinn360Url,
+      p720Url: _localEyevinnVinn720Url,
+      p1080Url: _localEyevinnVinn1080Url,
     ),
     coverUrl:
         'https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?w=1200',
@@ -197,9 +230,9 @@ final mockVideoFeedItems = <VideoFeedItem>[
     recommendationWords: const ['桌面收纳', '工作区改造', '小空间整理', '效率工具'],
     createdAt: DateTime(2026, 5, 22, 14, 5),
     videoSources: _sourcesFor(
-      p360Url: _flutterBeeHlsUrl,
-      p720Url: _w3cMovie300Url,
-      p1080Url: _oceansUrl,
+      p360Url: _localEyevinnTears360Url,
+      p720Url: _localEyevinnTears720Url,
+      p1080Url: _localEyevinnTears1080Url,
     ),
     coverUrl:
         'https://images.unsplash.com/photo-1497366811353-6870744d04b2?w=1200',
@@ -224,9 +257,9 @@ final mockVideoFeedItems = <VideoFeedItem>[
     recommendationWords: const ['夜景人像', '街灯拍照', '手机夜拍技巧', '摄影构图'],
     createdAt: DateTime(2026, 5, 22, 21, 40),
     videoSources: _sourcesFor(
-      p360Url: _sintelTrailerUrl,
-      p720Url: _flutterButterflyUrl,
-      p1080Url: _w3cMovie300Url,
+      p360Url: _localMuxArteChina360Url,
+      p720Url: _localMuxArteChina720Url,
+      p1080Url: _localMuxArteChina1080Url,
     ),
     coverUrl:
         'https://images.unsplash.com/photo-1492684223066-81342ee5ff30?w=1200',
@@ -251,9 +284,9 @@ final mockVideoFeedItems = <VideoFeedItem>[
     recommendationWords: const ['滑板入门', '滑板刹停', '新手站姿', '街头运动'],
     createdAt: DateTime(2026, 5, 23, 11, 15),
     videoSources: _sourcesFor(
-      p360Url: _oceansUrl,
-      p720Url: _sintelTrailerUrl,
-      p1080Url: _flutterBeeUrl,
+      p360Url: _localAppleBipBop360Url,
+      p720Url: _localAppleBipBop720Url,
+      p1080Url: _localAppleBipBop1080Url,
     ),
     coverUrl:
         'https://images.unsplash.com/photo-1520045892732-304bc3ac5d8e?w=1200',
@@ -278,9 +311,9 @@ final mockVideoFeedItems = <VideoFeedItem>[
     recommendationWords: const ['西湖徒步路线', '杭州一日游', '避开人群旅行', '城市徒步'],
     createdAt: DateTime(2026, 5, 23, 15, 25),
     videoSources: _sourcesFor(
-      p360Url: _w3cMovie300Url,
-      p720Url: _flutterBeeHlsUrl,
-      p1080Url: _flutterButterflyUrl,
+      p360Url: _localMux360Url,
+      p720Url: _localMux720Url,
+      p1080Url: _localMux1080Url,
     ),
     coverUrl:
         'https://images.unsplash.com/photo-1500534314209-a25ddb2bd429?w=1200',

@@ -43,3 +43,15 @@ app.*.map.json
 /android/app/debug
 /android/app/profile
 /android/app/release
+
+# Local playback test media. Keep manifests/docs small; avoid committing large
+# downloaded videos and generated HLS segments.
+/video_sources/
+/video_sources/**/*.mp4
+/video_sources/**/*.mov
+/video_sources/**/*.m4v
+/video_sources/**/*.m3u8
+/video_sources/**/*.ts
+/video_sources/**/*.m4s
+/video_sources/**/*.aac
+/video_sources/**/*.vtt
