@@ -130,6 +130,9 @@ void main() {
     test('loads API endpoint and text-embedding-3-small model', () {
       final config = SearchOfflineConfig.fromJson(const {
         'apiBaseUrl': 'https://api.bianxieai.com',
+        'chatCompletionEndpoint':
+            'https://api.bianxieai.com/v1/chat/completions',
+        'chatModel': 'gpt-4o-mini-2024-07-18',
         'embeddingEndpoint': 'https://api.bianxieai.com/v1/embeddings',
         'apiKey': 'test-key',
         'embeddingModel': 'text-embedding-3-small',
@@ -138,6 +141,11 @@ void main() {
       });
 
       expect(config.apiBaseUrl, 'https://api.bianxieai.com');
+      expect(
+        config.chatCompletionEndpoint,
+        'https://api.bianxieai.com/v1/chat/completions',
+      );
+      expect(config.chatModel, 'gpt-4o-mini-2024-07-18');
       expect(
         config.embeddingEndpoint,
         'https://api.bianxieai.com/v1/embeddings',
@@ -165,6 +173,10 @@ void main() {
       expect(
         config.embeddingEndpoint,
         'https://api.bianxieai.com/v1/embeddings',
+      );
+      expect(
+        config.chatCompletionEndpoint,
+        'https://api.bianxieai.com/v1/chat/completions',
       );
     });
   });

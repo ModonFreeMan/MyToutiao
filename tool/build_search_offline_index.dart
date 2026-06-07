@@ -26,7 +26,11 @@ Future<void> main(List<String> args) async {
   final limit = int.parse(_argValue(args, '--limit') ?? '3');
 
   final indexer = VideoSearchOfflineIndexer(
-    summaryGenerator: const LocalVideoSummaryGenerator(),
+    summaryGenerator: ChatCompletionKeywordVideoSummaryGenerator(
+      apiKey: config.apiKey,
+      endpoint: config.chatCompletionEndpoint,
+      model: config.chatModel,
+    ),
     embeddingService: OpenAICompatibleSearchEmbeddingService(
       apiKey: config.apiKey,
       endpoint: config.embeddingEndpoint,
@@ -60,6 +64,8 @@ Future<void> main(List<String> args) async {
 
   stdout.writeln('business store: $outputPath');
   stdout.writeln('milvus: $host:$port/$collectionName');
+  stdout.writeln('chat completion endpoint: ${config.chatCompletionEndpoint}');
+  stdout.writeln('chat model: ${config.chatModel}');
   stdout.writeln('embedding endpoint: ${config.embeddingEndpoint}');
   stdout.writeln('embedding model: ${config.embeddingModel}');
 }

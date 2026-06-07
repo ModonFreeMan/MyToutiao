@@ -1,5 +1,7 @@
 {
   "apiBaseUrl": "https://api.bianxieai.com",
+  "chatCompletionEndpoint": "https://api.bianxieai.com/v1/chat/completions",
+  "chatModel": "gpt-4o-mini-2024-07-18",
   "embeddingEndpoint": "https://api.bianxieai.com/v1/embeddings",
   "apiKey": "replace-with-your-api-key",
   "embeddingModel": "text-embedding-3-small",

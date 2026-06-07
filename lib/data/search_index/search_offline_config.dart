@@ -5,6 +5,9 @@ class SearchOfflineConfig {
   const SearchOfflineConfig({
     required this.apiKey,
     this.apiBaseUrl = 'https://api.bianxieai.com',
+    this.chatCompletionEndpoint =
+        'https://api.bianxieai.com/v1/chat/completions',
+    this.chatModel = 'gpt-4o-mini-2024-07-18',
     this.embeddingEndpoint = 'https://api.bianxieai.com/v1/embeddings',
     this.embeddingModel = 'text-embedding-3-small',
     this.milvusHost = '192.168.1.13',
@@ -15,6 +18,8 @@ class SearchOfflineConfig {
 
   final String apiKey;
   final String apiBaseUrl;
+  final String chatCompletionEndpoint;
+  final String chatModel;
   final String embeddingEndpoint;
   final String embeddingModel;
   final String milvusHost;
@@ -46,10 +51,18 @@ class SearchOfflineConfig {
     return SearchOfflineConfig(
       apiKey: apiKey,
       apiBaseUrl: json['apiBaseUrl'] as String? ?? 'https://api.bianxieai.com',
+      chatCompletionEndpoint:
+          json['chatCompletionEndpoint'] as String? ??
+          _endpointFromBaseUrl(
+            json['apiBaseUrl'] as String? ?? 'https://api.bianxieai.com',
+            '/v1/chat/completions',
+          ),
+      chatModel: json['chatModel'] as String? ?? 'gpt-4o-mini-2024-07-18',
       embeddingEndpoint:
           json['embeddingEndpoint'] as String? ??
           _endpointFromBaseUrl(
             json['apiBaseUrl'] as String? ?? 'https://api.bianxieai.com',
+            '/v1/embeddings',
           ),
       embeddingModel:
           json['embeddingModel'] as String? ?? 'text-embedding-3-small',
@@ -64,10 +77,10 @@ class SearchOfflineConfig {
     );
   }
 
-  static String _endpointFromBaseUrl(String baseUrl) {
+  static String _endpointFromBaseUrl(String baseUrl, String path) {
     final normalizedBaseUrl = baseUrl.endsWith('/')
         ? baseUrl.substring(0, baseUrl.length - 1)
         : baseUrl;
-    return '$normalizedBaseUrl/v1/embeddings';
+    return '$normalizedBaseUrl$path';
   }
 }
