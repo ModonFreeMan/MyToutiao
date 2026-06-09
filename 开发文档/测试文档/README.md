@@ -2,13 +2,19 @@
 
 ## 测试目标
 
-当前测试覆盖推荐词匹配逻辑、Feed 分页状态、Feed 播放编排、方向感知预加载、Feed 覆盖恢复、搜索状态、搜索历史、播放器状态机、播放器初始化竞态、清晰度切换失败、清晰度切换集成链路、进度保持、起播性能指标归属与 baseline report、搜索数据源、Mock 视频源、Feed 基础播放链路、横屏播放链路、搜索页面、推荐词入口，以及“视频 Feed -> 搜索 -> 搜索结果 -> 回到 Feed 定位播放”的视频全链路，确保 MVP 的核心交互和观测能力可以稳定运行。
+当前测试覆盖推荐词匹配逻辑、Feed 分页状态、Feed 播放编排、方向感知预加载、快速滑动 preload debounce、Feed 覆盖恢复、搜索状态、搜索历史、播放器状态机、播放器初始化竞态、清晰度切换失败、清晰度切换集成链路、进度保持、起播性能指标归属与 baseline report、debug report、Mock / Dense 搜索数据源、离线搜索索引、Mock 视频源、Feed 基础播放链路、横屏播放链路、搜索页面、推荐词入口，以及“视频 Feed -> 搜索 -> 搜索结果 -> 回到 Feed 定位播放”的视频全链路，确保 MVP 的核心交互和观测能力可以稳定运行。
 
 ## 文档索引
 
 - [测试用例说明.md](D:/Flutter/VideoPlayer/开发文档/测试文档/测试用例说明.md:1)：记录每个测试文件的测试内容和通过标准。
+- [12.4 PlayerController preload 能力测试说明.md](D:/Flutter/VideoPlayer/开发文档/测试文档/12.4%20PlayerController%20preload%20能力测试说明.md:1)：记录 12.4 阶段的 preload 生命周期测试口径。
+- [12.5 单 preload 过期任务和资源上限测试说明.md](D:/Flutter/VideoPlayer/开发文档/测试文档/12.5%20单%20preload%20过期任务和资源上限测试说明.md:1)：记录 12.5 阶段的 preload 过期和资源上限测试口径。
 - [12.7 方向感知预加载扩展测试说明.md](D:/Flutter/VideoPlayer/开发文档/测试文档/12.7 方向感知预加载扩展测试说明.md:1)：记录方向感知 preload candidate 的单元测试与回归范围。
 - [12.8 快速滑动预加载节流与释放收敛测试说明.md](D:/Flutter/VideoPlayer/开发文档/测试文档/12.8 快速滑动预加载节流与释放收敛测试说明.md:1)：记录快速滑动 preload debounce、换源清理和回归测试范围。
+- [12.9 预加载效果评估与回归验证测试说明.md](D:/Flutter/VideoPlayer/开发文档/测试文档/12.9%20预加载效果评估与回归验证测试说明.md:1)：记录 12.9 指标评估、自动采集和回归范围。
+- [12.9 预加载效果评估与回归验证结果记录.md](D:/Flutter/VideoPlayer/开发文档/测试文档/12.9%20预加载效果评估与回归验证结果记录.md:1)：记录 12.9 当前验证结果和待手工采样项。
+
+阶段文档保留当时阶段的测试口径，可能与当前最终实现存在差异；当前测试总览以本 README 和 [测试用例说明.md](D:/Flutter/VideoPlayer/开发文档/测试文档/测试用例说明.md:1) 为准。
 
 ## 测试目录结构
 
@@ -20,6 +26,8 @@ test/
 ├── integration/
 │   ├── basic_playback_flow_test.dart
 │   ├── landscape_player_flow_test.dart
+│   ├── preload_metrics_collection_test.dart
+│   ├── search_result_feed_focus_test.dart
 │   ├── search_and_quality_flow_test.dart
 │   └── video_full_flow_test.dart
 ├── unit/
@@ -28,6 +36,7 @@ test/
 │   │   ├── feed_playback_coordinator_test.dart
 │   │   └── feed_view_model_test.dart
 │   ├── observability/
+│   │   ├── playback_startup_debug_report_test.dart
 │   │   └── playback_startup_metrics_test.dart
 │   ├── mock/
 │   │   └── mock_videos_test.dart
@@ -39,8 +48,11 @@ test/
 │   ├── recommendation/
 │   │   └── recommendation_service_test.dart
 │   ├── search/
+│   │   ├── dense_search_datasource_test.dart
 │   │   ├── mock_search_datasource_test.dart
-│   │   └── search_view_model_test.dart
+│   │   ├── search_view_model_test.dart
+│   │   ├── video_dense_search_service_test.dart
+│   │   └── video_search_offline_indexer_test.dart
 │   └── storage/
 │       └── search_history_service_test.dart
 └── widget/
@@ -68,7 +80,7 @@ flutter analyze
 flutter test
 ```
 
-最近一次验证结果：
+最近一次验证结果以本地重新执行命令为准。历史记录：
 
 ```text
 flutter analyze: No issues found
